@@ -5,7 +5,7 @@ import DashboardPage from './pages/admin_pages/DashboardPage';
 import './index.css';
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(true);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   return (
     <NotificationProvider>
