@@ -239,15 +239,15 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {services.map((s) =>
-                    queues[s.id]?.patients.map((p) => (
+                    queues[s.id]?.patients.map((p, idx) => (
                       <tr key={p.id}>
-                        <td className={styles.pos}>{p.position}</td>
+                        <td className={styles.pos}>{idx + 1}</td>
                         <td>{p.name}</td>
                         <td>{s.name}</td>
-                        <td>{p.wait}</td>
+                        <td>~{(idx + 1) * s.duration} min</td>
                         <td>
-                          <span className={`${styles.qBadge} ${p.position === 1 ? styles.nextUp : styles.waiting}`}>
-                            {p.status}
+                          <span className={`${styles.qBadge} ${idx === 0 ? styles.nextUp : styles.waiting}`}>
+                            {idx === 0 ? 'Next up' : 'Waiting'}
                           </span>
                         </td>
                       </tr>

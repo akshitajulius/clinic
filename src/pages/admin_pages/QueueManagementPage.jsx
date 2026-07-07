@@ -136,7 +136,7 @@ export default function QueueManagementPage({ services, queues, setQueues, onBac
                       <div className={styles.patientInfo}>
                         <div className={styles.patientName}>{patient.name}</div>
                         <div className={styles.patientMeta}>
-                          Joined {patient.joinedAt} · Est. {patient.wait}
+                          Joined {patient.joinedAt} · Est. ~{(idx + 1) * service.duration} min
                         </div>
                       </div>
                       <span className={`${styles.statusBadge} ${idx === 0 ? styles.statusNext : styles.statusWaiting}`}>
