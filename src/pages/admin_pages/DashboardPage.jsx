@@ -32,7 +32,7 @@ const initialQueue = {
 
 const emptyForm = { name: '', description: '', duration: '', priority: 'low' };
 
-export default function DashboardPage() {
+export default function DashboardPage({ onNavigateQueue }) {
   const { addNotification } = useNotifications();
   const [services, setServices] = useState(initialServices);
   const [queues, setQueues] = useState(initialQueue);
@@ -107,12 +107,20 @@ export default function DashboardPage() {
             <h1 className={styles.heading}>Admin dashboard</h1>
             <p className={styles.sub}>Overview of active services and queues.</p>
           </div>
-          <button
-            className={styles.testBtn}
-            onClick={() => addNotification('Queue update: Patient #4 joined General Checkup.', 'update')}
-          >
-            + Simulate notification
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className={styles.testBtn}
+              onClick={onNavigateQueue}
+            >
+              Manage Queues
+            </button>
+            <button
+              className={styles.testBtn}
+              onClick={() => addNotification('Queue update: Patient #4 joined General Checkup.', 'update')}
+            >
+              + Simulate notification
+            </button>
+          </div>
         </div>
 
         <div className={styles.grid}>
@@ -123,7 +131,7 @@ export default function DashboardPage() {
                 + Add Service
               </button>
               <button className={styles.addBtn} onClick={() => setShowFind(true)}>
-                🔍 Find Service
+                Find Service
               </button>
             </div>
             <div className={styles.serviceList}>
