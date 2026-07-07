@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import { useNotifications } from '../../context/NotificationContext';
+import QueueManagementPage from './QueueManagementPage';
+import PATIENT_NAMES from './Patient_Names_Mock_Data';
 import styles from './DashboardPage.module.css';
 
 const initialServices = [
@@ -13,15 +15,15 @@ const initialQueue = {
   1: {
     open: true,
     patients: [
-      { id: 1, name: 'Sarah M.', position: 1, wait: '~5 min', status: 'Next up' },
-      { id: 2, name: 'James T.', position: 2, wait: '~18 min', status: 'Waiting' },
-      { id: 3, name: 'Priya K.', position: 3, wait: '~30 min', status: 'Waiting' },
+      { id: 1, name: 'Sarah M.', position: 1, wait: '~5 min', status: 'Next up', joinedAt: '10:02 AM' },
+      { id: 2, name: 'James T.', position: 2, wait: '~18 min', status: 'Waiting', joinedAt: '10:08 AM' },
+      { id: 3, name: 'Priya K.', position: 3, wait: '~30 min', status: 'Waiting', joinedAt: '10:14 AM' },
     ],
   },
   2: {
     open: true,
     patients: [
-      { id: 4, name: 'Michael B.', position: 1, wait: '~3 min', status: 'Next up' },
+      { id: 4, name: 'Michael B.', position: 1, wait: '~3 min', status: 'Next up', joinedAt: '10:30 AM' },
     ],
   },
   3: {
@@ -32,7 +34,15 @@ const initialQueue = {
 
 const emptyForm = { name: '', description: '', duration: '', priority: 'low' };
 
-export default function DashboardPage({ onNavigateQueue }) {
+function formatTime(date) {
+  let h = date.getHours();
+  const m = date.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
+export default function DashboardPage() {
   const { addNotification } = useNotifications();
   const [services, setServices] = useState(initialServices);
   const [queues, setQueues] = useState(initialQueue);
@@ -42,6 +52,7 @@ export default function DashboardPage({ onNavigateQueue }) {
   const [showFind, setShowFind] = useState(false);
   const [findQuery, setFindQuery] = useState('');
   const [findResult, setFindResult] = useState(null);
+  const [view, setView] = useState('dashboard');
 
   const toggleQueue = (serviceId) => {
     setQueues(prev => ({
@@ -98,6 +109,50 @@ export default function DashboardPage({ onNavigateQueue }) {
     setFindResult(null);
   };
 
+  const simulateNewQueue = () => {
+    const openServices = services.filter(s => queues[s.id]?.open);
+    if (openServices.length === 0) {
+      addNotification('No open queues available.', 'update');
+      return;
+    }
+    const randomService = openServices[Math.floor(Math.random() * openServices.length)];
+    const randomName = PATIENT_NAMES[Math.floor(Math.random() * PATIENT_NAMES.length)];
+    const now = new Date();
+    const currentPatients = queues[randomService.id]?.patients || [];
+    const position = currentPatients.length + 1;
+    const estWait = `~${position * randomService.duration} min`;
+
+    const newPatient = {
+      id: Date.now(),
+      name: randomName,
+      position,
+      wait: estWait,
+      status: position === 1 ? 'Next up' : 'Waiting',
+      joinedAt: formatTime(now),
+    };
+
+    setQueues(prev => ({
+      ...prev,
+      [randomService.id]: {
+        ...prev[randomService.id],
+        patients: [...prev[randomService.id].patients, newPatient],
+      },
+    }));
+
+    addNotification(`Queue update: ${randomName} joined ${randomService.name}.`, 'update');
+  };
+
+  if (view === 'queue') {
+    return (
+      <QueueManagementPage
+        services={services}
+        queues={queues}
+        setQueues={setQueues}
+        onBack={() => setView('dashboard')}
+      />
+    );
+  }
+
   return (
     <div className={styles.page}>
       <Navbar role="admin" />
@@ -110,9 +165,15 @@ export default function DashboardPage({ onNavigateQueue }) {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               className={styles.testBtn}
-              onClick={onNavigateQueue}
+              onClick={() => setView('queue')}
             >
               Manage Queues
+            </button>
+            <button
+              className={styles.testBtn}
+              onClick={simulateNewQueue}
+            >
+              + Simulate New Queue
             </button>
             <button
               className={styles.testBtn}

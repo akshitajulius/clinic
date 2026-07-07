@@ -2,51 +2,14 @@ import { useState, useMemo } from 'react';
 import Navbar from '../../components/Navbar';
 import styles from './QueueManagementPage.module.css';
 
-const mockServices = [
-  { id: 1, name: 'General Checkup' },
-  { id: 2, name: 'Vaccination' },
-  { id: 3, name: 'Lab Draw' },
-  { id: 4, name: 'Dental Cleaning' },
-];
-
-const mockQueue = {
-  1: {
-    open: true,
-    patients: [
-      { id: 101, name: 'Sarah Mitchell', wait: '~5 min', joinedAt: '10:02 AM' },
-      { id: 102, name: 'James Torres', wait: '~18 min', joinedAt: '10:08 AM' },
-      { id: 103, name: 'Priya Kumar', wait: '~30 min', joinedAt: '10:14 AM' },
-      { id: 104, name: 'David Chen', wait: '~40 min', joinedAt: '10:21 AM' },
-    ],
-  },
-  2: {
-    open: true,
-    patients: [
-      { id: 201, name: 'Michael Brown', wait: '~3 min', joinedAt: '10:30 AM' },
-      { id: 202, name: 'Lisa Park', wait: '~8 min', joinedAt: '10:33 AM' },
-    ],
-  },
-  3: {
-    open: false,
-    patients: [],
-  },
-  4: {
-    open: true,
-    patients: [
-      { id: 401, name: 'Emily Davis', wait: '~10 min', joinedAt: '9:55 AM' },
-    ],
-  },
-};
-
-export default function QueueManagementPage({ onBack }) {
-  const [queues, setQueues] = useState(mockQueue);
+export default function QueueManagementPage({ services, queues, setQueues, onBack }) {
   const [selectedService, setSelectedService] = useState('all');
   const [servedToast, setServedToast] = useState(null);
 
   const filteredServices = useMemo(() => {
-    if (selectedService === 'all') return mockServices;
-    return mockServices.filter(s => s.id === Number(selectedService));
-  }, [selectedService]);
+    if (selectedService === 'all') return services;
+    return services.filter(s => s.id === Number(selectedService));
+  }, [selectedService, services]);
 
   const totalInQueue = useMemo(() => {
     return filteredServices.reduce((sum, s) => sum + (queues[s.id]?.patients.length || 0), 0);
@@ -76,7 +39,7 @@ export default function QueueManagementPage({ onBack }) {
     const q = queues[serviceId];
     if (!q || q.patients.length === 0) return;
     const served = q.patients[0];
-    const serviceName = mockServices.find(s => s.id === serviceId)?.name;
+    const serviceName = services.find(s => s.id === serviceId)?.name;
 
     setQueues(prev => ({
       ...prev,
@@ -112,7 +75,7 @@ export default function QueueManagementPage({ onBack }) {
             onChange={e => setSelectedService(e.target.value)}
           >
             <option value="all">All Services</option>
-            {mockServices.map(s => (
+            {services.map(s => (
               <option key={s.id} value={s.id}>
                 {s.name} ({queues[s.id]?.patients.length || 0})
               </option>
