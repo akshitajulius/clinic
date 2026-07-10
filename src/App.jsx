@@ -11,6 +11,12 @@ import './index.css';
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+
+  const handleLogin = (role) => {
+    setUserRole(role);
+    setLoggedIn(true);
+  };
 
   return (
     <NotificationProvider>
@@ -27,10 +33,10 @@ export default function App() {
             <Route path="/history" element={<UserHistoryPage />} />
             
             {/* Fallback: if they go to a weird URL, send them to the dashboard. just in case */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to={userRole === 'admin' ? '/admin' : '/dashboard'} replace />} />
           </Routes>
         ) : (
-          <LoginPage onLogin={() => setLoggedIn(true)} />
+          <LoginPage onLogin={handleLogin} />
         )}
       </Router>
     </NotificationProvider>
