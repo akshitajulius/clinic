@@ -9,6 +9,11 @@ const schema = {
   password: [validators.required, validators.minLength(8)],
 };
 
+const MOCK_ACCOUNTS = [
+  { email: 'patient@gmail.com', password: '12345678', role: 'patient' },
+  { email: 'admin@gmail.com', password: '12345678', role: 'admin' },
+];
+
 export default function LoginPage({ onLogin }) {
   const { values, errors, touched, handleChange, handleBlur, validate } =
     useFormValidation({ email: '', password: '' }, schema);
@@ -20,9 +25,16 @@ export default function LoginPage({ onLogin }) {
     if (!validate()) return;
     setSubmitting(true);
     setTimeout(() => {
-      setSubmitting(false);
-      addNotification('Welcome back! You have been logged in.', 'info');
-      onLogin?.();
+      const account = MOCK_ACCOUNTS.find(
+        (a) => a.email === values.email && a.password === values.password
+      );
+      if (account) {
+        addNotification('Welcome back! You have been logged in.', 'info');
+        onLogin?.(account.role);
+      } else {
+        addNotification('Invalid email or password.', 'error');
+        setSubmitting(false);
+      }
     }, 800);
   };
 
