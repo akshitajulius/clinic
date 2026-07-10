@@ -1,0 +1,379 @@
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+}
+
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 16px;
+}
+
+.heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: -0.4px;
+  margin-bottom: 4px;
+}
+
+.sub {
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.testBtn {
+  background: white;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.testBtn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 20px;
+}
+
+@media (max-width: 700px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.section {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.serviceList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.serviceCard {
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--gray-50);
+}
+
+.serviceTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.serviceName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.statusBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.open {
+  background: var(--green-50);
+  color: var(--green-600);
+}
+
+.closed {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
+.serviceMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1.5px solid var(--gray-100);
+}
+
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--gray-50);
+  color: var(--gray-700);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.pos {
+  font-weight: 700;
+  color: var(--gray-900);
+  width: 32px;
+}
+
+.qBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.nextUp {
+  background: var(--amber-50);
+  color: #b45309;
+}
+
+.waiting {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.toggleBtn {
+  margin-top: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: white;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.toggleBtn:hover {
+  border-color: var(--gray-300);
+}
+
+.closeBtn {
+  color: var(--red-600);
+}
+
+.closeBtn:hover {
+  background: var(--red-50);
+  border-color: var(--red-500);
+}
+
+.openBtn {
+  color: var(--green-600);
+}
+
+.openBtn:hover {
+  background: var(--green-50);
+  border-color: var(--green-500);
+}
+
+.emptyMsg {
+  font-size: 14px;
+  color: var(--gray-500);
+  padding: 12px 0;
+}
+
+.btnRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.addBtn {
+  flex: 1;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--blue-600);
+  background: var(--blue-50);
+  border: 1.5px dashed var(--blue-200);
+  border-radius: var(--radius);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.addBtn:hover {
+  background: var(--blue-100);
+  border-color: var(--blue-400);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-lg);
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 20px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 5px;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--gray-800);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--blue-500);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.error {
+  display: block;
+  font-size: 12px;
+  color: var(--red-600);
+  margin-top: 4px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: white;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--gray-600);
+}
+
+.cancelBtn:hover {
+  background: var(--gray-50);
+}
+
+.submitBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--blue-600);
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+}
+
+.submitBtn:hover {
+  background: var(--blue-700);
+}
+
+.findError {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--red-600);
+  text-align: center;
+}
+
+.findResult {
+  margin-top: 16px;
+}
+
+.suggestions {
+  list-style: none;
+  border: 1px solid var(--gray-200);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.suggestionItem {
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--gray-700);
+  cursor: pointer;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.suggestionItem:hover {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+

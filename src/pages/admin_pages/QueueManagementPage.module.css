@@ -1,0 +1,433 @@
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+}
+
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 16px;
+}
+
+.heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: -0.4px;
+  margin-bottom: 4px;
+}
+
+.sub {
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-600);
+  background: white;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.backBtn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.filterSelect {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--gray-800);
+  background: var(--gray-50);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.filterSelect:focus {
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filterStats {
+  display: flex;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.statChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.statChipBlue {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.statChipAmber {
+  background: var(--amber-50);
+  color: #b45309;
+}
+
+.queueSection {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.queueHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.queueTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queueTitleDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green-500);
+  display: inline-block;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.queueTitleDotClosed {
+  background: var(--gray-300);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.serveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--green-500), var(--green-600));
+  border: none;
+  border-radius: var(--radius);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.serveBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.serveBtn:active {
+  transform: translateY(0);
+}
+
+.serveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.queueList {
+  padding: 0;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--gray-50);
+  transition: background 0.15s;
+  animation: slideIn 0.25s ease-out;
+}
+
+.queueItem:last-child {
+  border-bottom: none;
+}
+
+.queueItem:hover {
+  background: var(--gray-50);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.servedItem {
+  animation: serveOut 0.4s ease-out forwards;
+}
+
+@keyframes serveOut {
+  0% { opacity: 1; transform: translateX(0); background: var(--green-50); }
+  100% { opacity: 0; transform: translateX(30px); max-height: 0; padding: 0 20px; overflow: hidden; }
+}
+
+.positionBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.posFirst {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.posOther {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.patientInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.patientMeta {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.statusBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.statusNext {
+  background: var(--amber-50);
+  color: #b45309;
+}
+
+.statusWaiting {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.itemActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.queueItem:hover .itemActions {
+  opacity: 1;
+}
+
+.moveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: white;
+  color: var(--gray-500);
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.moveBtn:hover {
+  background: var(--blue-50);
+  color: var(--blue-600);
+  border-color: var(--blue-200);
+}
+
+.moveBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: white;
+  color: var(--gray-400);
+  border-color: var(--gray-100);
+}
+
+.removeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: white;
+  color: var(--gray-400);
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.removeBtn:hover {
+  background: var(--red-50);
+  color: var(--red-600);
+  border-color: var(--red-500);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  font-size: 24px;
+  color: var(--gray-400);
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 4px;
+}
+
+.emptyDesc {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.servedToast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  padding: 12px 20px;
+  background: var(--gray-800);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  animation: toastIn 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.serviceName {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+@media (max-width: 600px) {
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filterStats {
+    margin-left: 0;
+  }
+  .itemActions {
+    opacity: 1;
+  }
+}
