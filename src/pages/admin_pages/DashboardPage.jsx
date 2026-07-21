@@ -3,13 +3,8 @@ import Navbar from '../../components/Navbar';
 import { useNotifications } from '../../context/NotificationContext';
 import QueueManagementPage from './QueueManagementPage';
 import PATIENT_NAMES from './Patient_Names_Mock_Data';
+import { createService, listServices, findServiceByName } from '../../backend/api';
 import styles from './DashboardPage.module.css';
-
-const initialServices = [
-  { id: 1, name: 'General Checkup', description: 'Routine health assessment', duration: 20, priority: 'high', avgWait: '18 min' },
-  { id: 2, name: 'Vaccination', description: 'Immunization services', duration: 10, priority: 'medium', avgWait: '5 min' },
-  { id: 3, name: 'Lab Draw', description: 'Blood work collection', duration: 15, priority: 'medium', avgWait: '—' },
-];
 
 const initialQueue = {
   1: {
@@ -44,7 +39,7 @@ function formatTime(date) {
 
 export default function DashboardPage() {
   const { addNotification } = useNotifications();
-  const [services, setServices] = useState(initialServices);
+  const [services, setServices] = useState(() => listServices().data);
   const [queues, setQueues] = useState(initialQueue);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -61,32 +56,28 @@ export default function DashboardPage() {
     }));
   };
 
-  const validate = () => {
-    const errs = {};
-    if (!form.name.trim()) errs.name = 'Service name is required.';
-    else if (form.name.length > 100) errs.name = 'Max 100 characters.';
-    if (!form.description.trim()) errs.description = 'Description is required.';
-    if (!form.duration || Number(form.duration) <= 0) errs.duration = 'Valid duration is required.';
-    return errs;
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
+    const result = createService({
+      name: form.name,
+      description: form.description,
+      duration: form.duration ? Number(form.duration) : undefined,
+      priority: form.priority,
+    });
+    if (!result.success) {
+      const errs = {};
+      result.errors.forEach(err => {
+        if (err.includes('name')) errs.name = err;
+        else if (err.includes('description')) errs.description = err;
+        else if (err.includes('duration')) errs.duration = err;
+        else if (err.includes('priority')) errs.priority = err;
+        else errs.general = err;
+      });
       setErrors(errs);
       return;
     }
-    const newId = Date.now();
-    setServices(prev => [...prev, {
-      id: newId,
-      name: form.name.trim(),
-      description: form.description.trim(),
-      duration: Number(form.duration),
-      priority: form.priority,
-      avgWait: `${Number(form.duration)} min`,
-    }]);
-    setQueues(prev => ({ ...prev, [newId]: { open: true, patients: [] } }));
+    setServices(listServices().data);
+    setQueues(prev => ({ ...prev, [result.data.id]: { open: true, patients: [] } }));
     setForm(emptyForm);
     setErrors({});
     setShowForm(false);
@@ -99,8 +90,13 @@ export default function DashboardPage() {
   };
 
   const handleFind = () => {
-    const match = services.find(s => s.name.toLowerCase() === findQuery.trim().toLowerCase());
-    setFindResult(match || 'not_found');
+    const result = findServiceByName(findQuery);
+    if (!result.success || result.data.length === 0) {
+      setFindResult('not_found');
+      return;
+    }
+    const exact = result.data.find(s => s.name.toLowerCase() === findQuery.trim().toLowerCase());
+    setFindResult(exact || 'not_found');
   };
 
   const closeFind = () => {
@@ -332,9 +328,8 @@ export default function DashboardPage() {
                 onChange={e => { setFindQuery(e.target.value); setFindResult(null); }}
               />
               {findQuery.trim().length > 0 && !findResult && (() => {
-                const suggestions = services.filter(s =>
-                  s.name.toLowerCase().includes(findQuery.trim().toLowerCase())
-                );
+                const result = findServiceByName(findQuery);
+                const suggestions = result.success ? result.data : [];
                 return suggestions.length > 0 ? (
                   <ul className={styles.suggestions}>
                     {suggestions.map(s => (
