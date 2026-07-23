@@ -1,30 +1,46 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useNotifications } from '../context/NotificationContext';
 import styles from './UserDashboard.module.css';
-
-// Mock data for now: Simulating a queue on the main page to the left for a user who just logged in.
-const mockActiveQueue = {
-  service: 'General Checkup',
-  position: 3,
-  estWait: '~20 min',
-  status: 'Waiting'
-};
-
-// Mock data: Simulating the services they can join
-const mockServices = [
-  { name: 'General Checkup', open: true, avgWait: '18 min' },
-  { name: 'Vaccination', open: true, avgWait: '5 min' },
-  { name: 'Lab Draw', open: false, avgWait: '—' },
-];
+import { listServices, getQueuePosition } from '../backend/api';
 
 export default function UserDashboard() {
   const navigate = useNavigate(); 
   const { addNotification } = useNotifications();
 
+  // State for live data from the backend
+  const [services, setServices] = useState([]);
+  const [activeQueue, setActiveQueue] = useState(null);
+
+  // Hardcoded for assignment phase consistency
+  const userId = 'patient-123';
+
+  useEffect(() => {
+    // 1. Fetch all clinic services from the backend
+    const servicesResult = listServices();
+    if (servicesResult.success) {
+      setServices(servicesResult.data);
+
+      // 2. Check if the user is currently waiting in any of these service queues
+      for (const service of servicesResult.data) {
+        const posResult = getQueuePosition(userId, service.id);
+        if (posResult.success) {
+          // Found an active queue! Save it to state and stop searching
+          setActiveQueue({
+            serviceName: service.name,
+            position: posResult.data.position,
+            estWait: posResult.data.estimatedWaitTime,
+            status: posResult.data.position === 1 ? 'Next Up' : 'Waiting'
+          });
+          break; 
+        }
+      }
+    }
+  }, []);
+
   return (
     <div className={styles.page}>
-      {/* 1. Reusing the Navbar, but setting the role to user */}
       <Navbar role="user" />
       
       <div className={styles.content}>
@@ -34,9 +50,7 @@ export default function UserDashboard() {
             <p className={styles.sub}>Welcome back! Here is your queue status and available services.</p>
           </div>
           
-          {/* Button Container for Layout */}
           <div style={{ display: 'flex', gap: '12px' }}>
-            {/* 2. Notification simulation}
             <button
               className={styles.testBtn}
               onClick={() => addNotification('Your turn for General Checkup is approaching!', 'update')}
@@ -44,7 +58,6 @@ export default function UserDashboard() {
               + Test Notification
             </button>
 
-            {/* History Navigation Button */}
             <button
               className={styles.testBtn}
               onClick={() => navigate('/history')}
@@ -52,7 +65,6 @@ export default function UserDashboard() {
               My History
             </button>
             
-            {/* 3. Join Queue Button */}
             <button
               className={styles.testBtn}
               style={{ background: '#2563eb', color: 'white', borderColor: '#2563eb' }}
@@ -64,38 +76,53 @@ export default function UserDashboard() {
         </div>
 
         <div className={styles.grid}>
-          {/* 3. Left Column: The patient's active status */}
+          {/* Left Column: Dynamically displays empty state or active queue */}
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Your Current Status</h2>
             
-            {/* MODIFIED: Made this card clickable based on your UX idea! */}
-            <div 
-              className={styles.serviceCard} 
-              onClick={() => navigate('/status')}
-              style={{ cursor: 'pointer', transition: 'background 0.2s' }}
-              title="Click to view live queue details"
-            >
+            {!activeQueue ? (
+              <div className={styles.serviceCard} style={{ textAlign: 'center', padding: '32px' }}>
+                <p style={{ color: '#64748b', marginBottom: '16px' }}>
+                  You are not currently waiting in any queues.
+                </p>
+                <button
+                  className={styles.testBtn}
+                  style={{ background: '#2563eb', color: 'white', borderColor: '#2563eb' }}
+                  onClick={() => navigate('/join')}
+                >
+                  Join a Queue Now
+                </button>
+              </div>
+            ) : (
+              <div 
+                className={styles.serviceCard} 
+                onClick={() => navigate('/status')}
+                style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                title="Click to view live queue details"
+              >
                 <div className={styles.serviceTop}>
-                  <span className={styles.serviceName}>{mockActiveQueue.service}</span>
-                  <span className={`${styles.statusBadge} ${styles.waiting}`}>{mockActiveQueue.status}</span>
+                  <span className={styles.serviceName}>{activeQueue.serviceName}</span>
+                  <span className={`${styles.statusBadge} ${styles.waiting}`}>{activeQueue.status}</span>
                 </div>
                 <div className={styles.serviceMeta}>
-                  <span>Position: #{mockActiveQueue.position}</span>
-                  <span>Est. Wait: {mockActiveQueue.estWait}</span>
+                  <span>Position: #{activeQueue.position}</span>
+                  <span>Est. Wait: {activeQueue.estWait}</span>
                 </div>
-            </div>
+              </div>
+            )}
           </section>
 
-          {/* 4. Right Column: List of all clinic services */}
+          {/* Right Column: List of real available services pulled from backend */}
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Available Services</h2>
             <div className={styles.serviceList}>
-              {mockServices.map((s) => (
-                <div key={s.name} className={styles.serviceCard}>
+              {services.map((s) => (
+                <div key={s.id} className={styles.serviceCard}>
                   <div className={styles.serviceTop}>
                     <span className={styles.serviceName}>{s.name}</span>
-                    <span className={`${styles.statusBadge} ${s.open ? styles.open : styles.closed}`}>
-                      {s.open ? 'Open' : 'Closed'}
+                    {/* Assuming all services are open by default for this phase */}
+                    <span className={`${styles.statusBadge} ${styles.open}`}>
+                      Open
                     </span>
                   </div>
                   <div className={styles.serviceMeta}>
