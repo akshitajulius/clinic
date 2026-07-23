@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import Navbar from '../../components/Navbar';
 import styles from './QueueManagementPage.module.css';
+import { serveNext as backendServeNext, leaveQueue as backendLeaveQueue } from '../../backend/api';
 
-export default function QueueManagementPage({ services, queues, setQueues, onBack }) {
+export default function QueueManagementPage({ services, queues, setQueues, refreshQueues, onBack }) {
   const [selectedService, setSelectedService] = useState('all');
   const [servedToast, setServedToast] = useState(null);
 
@@ -28,25 +29,19 @@ export default function QueueManagementPage({ services, queues, setQueues, onBac
     });
   };
 
-  const removePatient = (serviceId, patientIndex) => {
-    setQueues(prev => {
-      const patients = prev[serviceId].patients.filter((_, i) => i !== patientIndex);
-      return { ...prev, [serviceId]: { ...prev[serviceId], patients } };
-    });
+  const removePatient = (serviceId, patientId) => {
+    backendLeaveQueue(patientId);
+    refreshQueues();
   };
 
   const serveNext = (serviceId) => {
-    const q = queues[serviceId];
-    if (!q || q.patients.length === 0) return;
-    const served = q.patients[0];
+    const result = backendServeNext(serviceId);
+    if (!result.success) return;
+
+    refreshQueues();
+
     const serviceName = services.find(s => s.id === serviceId)?.name;
-
-    setQueues(prev => ({
-      ...prev,
-      [serviceId]: { ...prev[serviceId], patients: prev[serviceId].patients.slice(1) },
-    }));
-
-    setServedToast(`✓ Now serving ${served.name} — ${serviceName}`);
+    setServedToast(`✓ Now serving ${result.data.userName} — ${serviceName}`);
     setTimeout(() => setServedToast(null), 3000);
   };
 
@@ -161,7 +156,7 @@ export default function QueueManagementPage({ services, queues, setQueues, onBac
                         </button>
                         <button
                           className={styles.removeBtn}
-                          onClick={() => removePatient(service.id, idx)}
+                          onClick={() => removePatient(service.id, patient.id)}
                           title="Remove from queue"
                         >
                           ✕
