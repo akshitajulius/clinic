@@ -1,0 +1,98 @@
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+}
+
+.content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.pageHeader {
+  margin-bottom: 28px;
+}
+
+.heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 4px;
+}
+
+.sub {
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.card {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg, 12px);
+  padding: 8px; /* Slight padding to frame the list */
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+}
+
+.historyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+/* Remove the border from the very last item in the list */
+.historyItem:last-child {
+  border-bottom: none;
+}
+
+.itemMain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.serviceName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.itemDate {
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.itemStatus {
+  display: flex;
+  align-items: center;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badgeSuccess {
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.badgeWarning {
+  background: var(--amber-50);
+  color: #b45309;
+}
+
+.badgeError {
+  background: #fef2f2;
+  color: #ef4444;
+}
