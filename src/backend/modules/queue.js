@@ -24,12 +24,11 @@ export function joinQueue(data) {
     return { success: false, errors: ["You are already in this queue."] };
   }
 
-  // Create the queue entry
   const newEntry = {
     id: generateId("queue"),
     userId: data.userId,
+    userName: data.userName || "Patient",
     serviceId: data.serviceId,
-    // Inherit the priority from the service, or allow an override if applicable
     priority: data.priority || service.priority || "low",
     status: "waiting",
     joinedAt: new Date().toISOString(),
@@ -52,9 +51,82 @@ export function leaveQueue(queueId) {
 // Marker to indicate the end of user/patient functions
 
 export function viewQueue(serviceId) {
+  if (serviceId === undefined || serviceId === null) {
+    return { success: false, errors: ["serviceId is required."] };
+  }
+
+  const service = services.find((s) => s.id === serviceId);
+  if (!service) {
+    return { success: false, errors: ["Service not found."] };
+  }
+
+  const serviceQueue = queues.filter(
+    (q) => q.serviceId === serviceId && q.status === "waiting"
+  );
+
+  const priorityWeight = { high: 3, medium: 2, low: 1 };
+
+  serviceQueue.sort((a, b) => {
+    if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+      return priorityWeight[b.priority] - priorityWeight[a.priority];
+    }
+    return new Date(a.joinedAt) - new Date(b.joinedAt);
+  });
+
+  return {
+    success: true,
+    data: {
+      serviceName: service.name,
+      totalWaiting: serviceQueue.length,
+      queue: serviceQueue.map((entry, idx) => ({
+        ...entry,
+        position: idx + 1,
+        estimatedWaitTime: `${(idx + 1) * service.duration} min`,
+      })),
+    },
+  };
 }
 
 export function serveNext(serviceId) {
+  if (serviceId === undefined || serviceId === null) {
+    return { success: false, errors: ["serviceId is required."] };
+  }
+
+  const service = services.find((s) => s.id === serviceId);
+  if (!service) {
+    return { success: false, errors: ["Service not found."] };
+  }
+
+  const serviceQueue = queues.filter(
+    (q) => q.serviceId === serviceId && q.status === "waiting"
+  );
+
+  if (serviceQueue.length === 0) {
+    return { success: false, errors: ["No patients waiting in this queue."] };
+  }
+
+  const priorityWeight = { high: 3, medium: 2, low: 1 };
+
+  serviceQueue.sort((a, b) => {
+    if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+      return priorityWeight[b.priority] - priorityWeight[a.priority];
+    }
+    return new Date(a.joinedAt) - new Date(b.joinedAt);
+  });
+
+  const nextEntry = serviceQueue[0];
+
+  const idx = queues.findIndex((q) => q.id === nextEntry.id);
+  queues[idx].status = "served";
+  queues[idx].servedAt = new Date().toISOString();
+
+  return {
+    success: true,
+    data: {
+      ...queues[idx],
+      serviceName: service.name,
+    },
+  };
 }
 
 //  getQueuePosition function
@@ -93,4 +165,45 @@ export function getQueuePosition(userId, serviceId) {
     success: true, 
     data: { position, estimatedWaitTime: `${estimatedWaitTime} min` } 
   };
+}
+
+function formatQueueTime(isoString) {
+  const date = new Date(isoString);
+  let h = date.getHours();
+  const m = date.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
+export function viewAllQueues() {
+  const result = {};
+
+  for (const service of services) {
+    const serviceQueue = queues.filter(
+      (q) => q.serviceId === service.id && q.status === "waiting"
+    );
+
+    const priorityWeight = { high: 3, medium: 2, low: 1 };
+    serviceQueue.sort((a, b) => {
+      if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+        return priorityWeight[b.priority] - priorityWeight[a.priority];
+      }
+      return new Date(a.joinedAt) - new Date(b.joinedAt);
+    });
+
+    result[service.id] = {
+      open: true,
+      patients: serviceQueue.map((entry, idx) => ({
+        id: entry.id,
+        name: entry.userName,
+        position: idx + 1,
+        wait: `~${(idx + 1) * service.duration} min`,
+        status: idx === 0 ? "Next up" : "Waiting",
+        joinedAt: formatQueueTime(entry.joinedAt),
+      })),
+    };
+  }
+
+  return { success: true, data: result };
 }
