@@ -14,7 +14,7 @@ describe('Queue Management - Patient Logic', () => {
   });
 
   test('should fail validation if required fields are missing', () => {
-    const result = joinQueue({ serviceId: 1 });
+    const result = joinQueue({ serviceId: 1 }); // Missing userId
     expect(result.success).toBe(false);
     expect(result.errors[0]).toMatch(/Missing required fields/i);
   });
@@ -36,10 +36,13 @@ describe('Queue Management - Patient Logic', () => {
   });
 
   test('should correctly sort queue position by priority over arrival order', () => {
+    // 1. A low-priority patient joins first
     joinQueue({ userId: 'patient-low', serviceId: 1, priority: 'low' });
 
+    // 2. A high-priority patient joins second
     joinQueue({ userId: 'patient-high', serviceId: 1, priority: 'high' });
 
+    // The high-priority patient should jump to position #1 despite arriving later
     const posResult = getQueuePosition('patient-high', 1);
     expect(posResult.success).toBe(true);
     expect(posResult.data.position).toBe(1);
@@ -49,6 +52,8 @@ describe('Queue Management - Patient Logic', () => {
     joinQueue({ userId: 'patient-1', serviceId: 1, priority: 'medium' });
     joinQueue({ userId: 'patient-2', serviceId: 1, priority: 'medium' });
 
+    // Patient 2 is #2 in line. General Checkup (serviceId: 1) duration is 20 mins.
+    // Est wait should be 2 * 20 = 40 min.
     const posResult = getQueuePosition('patient-2', 1);
     expect(posResult.data.position).toBe(2);
     expect(posResult.data.estimatedWaitTime).toBe('40 min');
