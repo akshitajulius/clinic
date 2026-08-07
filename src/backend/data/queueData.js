@@ -69,3 +69,41 @@ export async function updateQueueEntryStatus(entryId, newStatus) {
     [newStatus, entryId]
   );
 }
+
+// Gets a specific user's waiting entry for a service queue
+export async function getUserQueueEntry(userId, serviceId) {
+  const [rows] = await pool.query(`
+    SELECT qe.*, s.duration, s.name as serviceName 
+    FROM queue_entries qe
+    JOIN queues q ON qe.queue_id = q.id
+    JOIN services s ON q.service_id = s.id
+    WHERE qe.user_id = ? AND q.service_id = ? AND qe.status = "waiting" AND q.status = "open"
+  `, [userId, serviceId]);
+  return rows[0] || null;
+}
+
+// Gets all waiting patients for a specific service queue, ordered by their position in line
+export async function getWaitingQueueForService(serviceId) {
+  const [rows] = await pool.query(`
+    SELECT qe.*, qe.user_id as userName, s.duration, s.name as serviceName
+    FROM queue_entries qe
+    JOIN queues q ON qe.queue_id = q.id
+    JOIN services s ON q.service_id = s.id
+    WHERE q.service_id = ? AND qe.status = "waiting" AND q.status = "open"
+    ORDER BY qe.position ASC
+  `, [serviceId]);
+  return rows;
+}
+
+// Gets all waiting patients across all open queues
+export async function getAllActiveQueues() {
+  const [rows] = await pool.query(`
+    SELECT qe.*, qe.user_id as userName, s.id as serviceId, s.duration, s.name as serviceName
+    FROM queue_entries qe
+    JOIN queues q ON qe.queue_id = q.id
+    JOIN services s ON q.service_id = s.id
+    WHERE qe.status = "waiting" AND q.status = "open"
+    ORDER BY s.id, qe.position ASC
+  `);
+  return rows;
+}
