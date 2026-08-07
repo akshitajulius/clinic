@@ -1,122 +1,134 @@
+import { jest } from '@jest/globals';
+
+jest.mock('../src/backend/data/notificationDb.js', () => ({
+  insertNotification: jest.fn(),
+  selectHistoryByUser: jest.fn(),
+  selectHistoryByService: jest.fn(),
+  getUsageSummaryFromDb: jest.fn(),
+}));
+
+import {
+  insertNotification,
+  selectHistoryByUser,
+  selectHistoryByService,
+  getUsageSummaryFromDb,
+} from '../src/backend/data/notificationDb.js';
+
 import {
   addHistoryEntry,
   getHistoryForUser,
   getHistoryForService,
   getUsageSummary,
-  history,
 } from '../src/backend/modules/history.js';
-import { queues } from '../src/backend/data/store.js';
 
 beforeEach(() => {
-  history.length = 0;
-  queues.length = 0;
+  jest.clearAllMocks();
 });
 
 describe('addHistoryEntry', () => {
-  test('adds a history entry successfully', () => {
-    const result = addHistoryEntry('user-1', 1, 'served');
+  test('adds a history entry successfully', async () => {
+    const mockEntry = { id: 1, userId: 'user-1', message: 'General Checkup — served', type: 'update', status: 'sent', timestamp: new Date().toISOString() };
+    insertNotification.mockResolvedValue(mockEntry);
+
+    const result = await addHistoryEntry('user-1', 1, 'served');
     expect(result.success).toBe(true);
-    expect(result.data.userId).toBe('user-1');
-    expect(result.data.serviceId).toBe(1);
-    expect(result.data.outcome).toBe('served');
     expect(result.data.serviceName).toBe('General Checkup');
+    expect(result.data.outcome).toBe('served');
   });
 
-  test('returns error if userId is missing', () => {
-    const result = addHistoryEntry(null, 1, 'served');
+  test('returns error if userId is missing', async () => {
+    const result = await addHistoryEntry(null, 1, 'served');
     expect(result.success).toBe(false);
   });
 
-  test('returns error if serviceId is missing', () => {
-    const result = addHistoryEntry('user-1', null, 'served');
+  test('returns error if serviceId is missing', async () => {
+    const result = await addHistoryEntry('user-1', null, 'served');
     expect(result.success).toBe(false);
   });
 
-  test('returns error if outcome is missing', () => {
-    const result = addHistoryEntry('user-1', 1, null);
+  test('returns error if outcome is missing', async () => {
+    const result = await addHistoryEntry('user-1', 1, null);
     expect(result.success).toBe(false);
   });
 
-  test('returns error if outcome is invalid', () => {
-    const result = addHistoryEntry('user-1', 1, 'invalid-outcome');
+  test('returns error if outcome is invalid', async () => {
+    const result = await addHistoryEntry('user-1', 1, 'invalid-outcome');
     expect(result.success).toBe(false);
     expect(result.errors[0]).toContain('outcome must be one of');
   });
 
-  test('returns error if service does not exist', () => {
-    const result = addHistoryEntry('user-1', 999, 'served');
+  test('returns error if service does not exist', async () => {
+    const result = await addHistoryEntry('user-1', 999, 'served');
     expect(result.success).toBe(false);
     expect(result.errors[0]).toBe('Service not found.');
-  });
-
-  test('includes a timestamp in the entry', () => {
-    const result = addHistoryEntry('user-1', 1, 'served');
-    expect(result.data.timestamp).toBeDefined();
   });
 });
 
 describe('getHistoryForUser', () => {
-  test('returns history entries for a specific user', () => {
-    addHistoryEntry('user-1', 1, 'served');
-    addHistoryEntry('user-1', 2, 'left_queue');
-    addHistoryEntry('user-2', 1, 'served');
+  test('returns history entries for a specific user', async () => {
+    selectHistoryByUser.mockResolvedValue([
+      { id: 1, userId: 'user-1', message: 'General Checkup — served' },
+      { id: 2, userId: 'user-1', message: 'Vaccination — left_queue' },
+    ]);
 
-    const result = getHistoryForUser('user-1');
+    const result = await getHistoryForUser('user-1');
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(2);
   });
 
-  test('returns empty array if user has no history', () => {
-    const result = getHistoryForUser('user-99');
+  test('returns empty array if user has no history', async () => {
+    selectHistoryByUser.mockResolvedValue([]);
+    const result = await getHistoryForUser('user-99');
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(0);
   });
 
-  test('returns error if userId is missing', () => {
-    const result = getHistoryForUser(null);
+  test('returns error if userId is missing', async () => {
+    const result = await getHistoryForUser(null);
     expect(result.success).toBe(false);
   });
 });
 
 describe('getHistoryForService', () => {
-  test('returns history entries for a specific service', () => {
-    addHistoryEntry('user-1', 1, 'served');
-    addHistoryEntry('user-2', 1, 'left_queue');
-    addHistoryEntry('user-3', 2, 'served');
+  test('returns history entries for a specific service', async () => {
+    selectHistoryByService.mockResolvedValue([
+      { id: 1, message: 'General Checkup — served' },
+      { id: 2, message: 'General Checkup — left_queue' },
+    ]);
 
-    const result = getHistoryForService(1);
+    const result = await getHistoryForService(1);
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(2);
   });
 
-  test('returns empty array if service has no history', () => {
-    const result = getHistoryForService(3);
-    expect(result.success).toBe(true);
-    expect(result.data.length).toBe(0);
+  test('returns error if serviceId is missing', async () => {
+    const result = await getHistoryForService(null);
+    expect(result.success).toBe(false);
   });
 
-  test('returns error if serviceId is missing', () => {
-    const result = getHistoryForService(null);
+  test('returns error if service does not exist', async () => {
+    const result = await getHistoryForService(999);
     expect(result.success).toBe(false);
+    expect(result.errors[0]).toBe('Service not found.');
   });
 });
 
 describe('getUsageSummary', () => {
-  test('returns correct totals per service', () => {
-    addHistoryEntry('user-1', 1, 'served');
-    addHistoryEntry('user-2', 1, 'left_queue');
-    addHistoryEntry('user-3', 1, 'served');
+  test('returns usage summary from database', async () => {
+    getUsageSummaryFromDb.mockResolvedValue([
+      { type: 'update', status: 'sent', count: 3 },
+      { type: 'info', status: 'viewed', count: 2 },
+    ]);
 
-    const result = getUsageSummary();
+    const result = await getUsageSummary();
     expect(result.success).toBe(true);
-    expect(result.data['General Checkup'].total).toBe(3);
-    expect(result.data['General Checkup'].served).toBe(2);
-    expect(result.data['General Checkup'].left_queue).toBe(1);
+    expect(result.data.length).toBe(2);
   });
 
-  test('returns empty object if no history exists', () => {
-    const result = getUsageSummary();
+  test('returns empty array if no history exists', async () => {
+    getUsageSummaryFromDb.mockResolvedValue([]);
+    const result = await getUsageSummary();
     expect(result.success).toBe(true);
-    expect(Object.keys(result.data).length).toBe(0);
+    expect(result.data.length).toBe(0);
   });
 });
