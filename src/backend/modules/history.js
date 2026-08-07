@@ -1,82 +1,47 @@
-import { services } from "../data/store.js";
-import { validateRequired } from "../data/validators.js";
+import { services } from '../data/store.js';
+import { validateRequired } from '../data/validators.js';
+import { insertNotification, selectHistoryByUser, selectHistoryByService, getUsageSummaryFromDb } from '../data/notificationDb.js';
 
-export const history = [];
+const VALID_OUTCOMES = ['served', 'left_queue', 'cancelled_by_clinic'];
 
-let nextHistoryId = 1;
-
-const VALID_OUTCOMES = ["served", "left_queue", "cancelled_by_clinic"];
-
-
-export function addHistoryEntry(userId, serviceId, outcome) {
-  const validation = validateRequired(["userId", "serviceId", "outcome"], {
-    userId,
-    serviceId,
-    outcome,
-  });
+export async function addHistoryEntry(userId, serviceId, outcome) {
+  const validation = validateRequired(['userId', 'serviceId', 'outcome'], { userId, serviceId, outcome });
   if (!validation.valid) {
     return { success: false, errors: [validation.error] };
   }
-
   if (!VALID_OUTCOMES.includes(outcome)) {
-    return {
-      success: false,
-      errors: [`outcome must be one of: ${VALID_OUTCOMES.join(", ")}`],
-    };
+    return { success: false, errors: [`outcome must be one of: ${VALID_OUTCOMES.join(', ')}`] };
   }
-
   const service = services.find((s) => s.id === serviceId);
   if (!service) {
-    return { success: false, errors: ["Service not found."] };
+    return { success: false, errors: ['Service not found.'] };
   }
-
-  const entry = {
-    id: nextHistoryId++,
-    userId,
-    serviceId,
-    serviceName: service.name,
-    outcome,
-    timestamp: new Date().toISOString(),
-  };
-
-  history.push(entry);
-  return { success: true, data: entry };
+  const message = `${service.name} — ${outcome}`;
+  const entry = await insertNotification(userId, message, 'update');
+  return { success: true, data: { ...entry, serviceName: service.name, outcome } };
 }
 
-export function getHistoryForUser(userId) {
+export async function getHistoryForUser(userId) {
   if (userId === undefined || userId === null) {
-    return { success: false, errors: ["userId is required."] };
+    return { success: false, errors: ['userId is required.'] };
   }
-
-  const userHistory = history
-    .filter((h) => h.userId === userId)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  return { success: true, data: userHistory };
+  const entries = await selectHistoryByUser(userId);
+  return { success: true, data: entries };
 }
 
-export function getHistoryForService(serviceId) {
+export async function getHistoryForService(serviceId) {
   if (serviceId === undefined || serviceId === null) {
-    return { success: false, errors: ["serviceId is required."] };
+    return { success: false, errors: ['serviceId is required.'] };
   }
-
-  const serviceHistory = history
-    .filter((h) => h.serviceId === serviceId)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  return { success: true, data: serviceHistory };
+  const service = services.find((s) => s.id === serviceId);
+  if (!service) {
+    return { success: false, errors: ['Service not found.'] };
+  }
+  const entries = await selectHistoryByService(service.name);
+  return { success: true, data: entries };
 }
 
-export function getUsageSummary() {
-  const summary = {};
-
-  history.forEach((h) => {
-    if (!summary[h.serviceName]) {
-      summary[h.serviceName] = { total: 0, served: 0, left_queue: 0, cancelled_by_clinic: 0 };
-    }
-    summary[h.serviceName].total++;
-    summary[h.serviceName][h.outcome]++;
-  });
-
-  return { success: true, data: summary };
+export async function getUsageSummary() {
+  const rows = await getUsageSummaryFromDb();
+  return { success: true, data: rows };
 }
