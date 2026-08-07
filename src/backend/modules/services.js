@@ -1,80 +1,88 @@
-import { services, generateId } from "../data/store.js";
+import {
+  insertService,
+  selectAllServices,
+  selectServiceById,
+  updateServiceById,
+  deleteServiceById,
+  searchServicesByName,
+} from '../data/serviceDb.js';
 import {
   validateRequired,
   validateStringLength,
   validatePositiveNumber,
   validateEnum,
-} from "../data/validators.js";
+} from '../data/validators.js';
 
-const PRIORITY_LEVELS = ["low", "medium", "high"];
+const PRIORITY_LEVELS = ['low', 'medium', 'high'];
 
 function validateServiceData(data, isUpdate = false) {
   const errors = [];
 
   if (!isUpdate) {
-    const req = validateRequired(["name", "description", "duration"], data);
+    const req = validateRequired(['name', 'description', 'duration'], data);
     if (!req.valid) return { valid: false, errors: [req.error] };
   }
 
   if (data.name !== undefined) {
-    if (typeof data.name !== "string") {
-      errors.push("name must be a string");
+    if (typeof data.name !== 'string') {
+      errors.push('name must be a string');
     } else {
-      const len = validateStringLength("name", data.name.trim(), 1, 100);
+      const len = validateStringLength('name', data.name.trim(), 1, 100);
       if (!len.valid) errors.push(len.error);
     }
   }
 
   if (data.description !== undefined) {
-    if (typeof data.description !== "string") {
-      errors.push("description must be a string");
+    if (typeof data.description !== 'string') {
+      errors.push('description must be a string');
     } else {
-      const len = validateStringLength("description", data.description.trim(), 1, 500);
+      const len = validateStringLength('description', data.description.trim(), 1, 500);
       if (!len.valid) errors.push(len.error);
     }
   }
 
   if (data.duration !== undefined) {
-    const dur = typeof data.duration === "string" ? Number(data.duration) : data.duration;
+    const dur = typeof data.duration === 'string' ? Number(data.duration) : data.duration;
     if (isNaN(dur)) {
-      errors.push("duration must be a number");
+      errors.push('duration must be a number');
     } else {
-      const pos = validatePositiveNumber("duration", dur);
+      const pos = validatePositiveNumber('duration', dur);
       if (!pos.valid) errors.push(pos.error);
     }
   }
 
   if (data.priority !== undefined) {
-    const e = validateEnum("priority", data.priority, PRIORITY_LEVELS);
+    const e = validateEnum('priority', data.priority, PRIORITY_LEVELS);
     if (!e.valid) errors.push(e.error);
   }
 
   return errors.length > 0 ? { valid: false, errors } : { valid: true };
 }
 
-export function createService(data) {
+export async function createService(data) {
   const validation = validateServiceData(data);
   if (!validation.valid) {
     return { success: false, errors: validation.errors };
   }
 
+  const duration = typeof data.duration === 'string' ? Number(data.duration) : data.duration;
+
   const newService = {
-    id: generateId("service"),
     name: data.name.trim(),
     description: data.description.trim(),
-    duration: typeof data.duration === "string" ? Number(data.duration) : data.duration,
-    priority: data.priority || "low",
-    avgWait: `${typeof data.duration === "string" ? Number(data.duration) : data.duration} min`,
+    duration,
+    priority: data.priority || 'low',
+    avgWait: `${duration} min`,
   };
 
-  services.push(newService);
-  return { success: true, data: newService };
+  const saved = await insertService(newService);
+  return { success: true, data: saved };
 }
 
-export function updateService(id, data) {
-  const index = services.findIndex((s) => s.id === id);
-  if (index === -1) {
-    return { success: false, errors: ["Service not found"] };
+export async function updateService(id, data) {
+  const existing = await selectServiceById(id);
+  if (!existing) {
+    return { success: false, errors: ['Service not found'] };
   }
 
   const validation = validateServiceData(data, true);
@@ -82,46 +90,49 @@ export function updateService(id, data) {
     return { success: false, errors: validation.errors };
   }
 
-  const existing = services[index];
+  const fields = {};
 
-  if (data.name !== undefined) existing.name = data.name.trim();
-  if (data.description !== undefined) existing.description = data.description.trim();
+  if (data.name !== undefined) fields.name = data.name.trim();
+  if (data.description !== undefined) fields.description = data.description.trim();
   if (data.duration !== undefined) {
-    existing.duration = typeof data.duration === "string" ? Number(data.duration) : data.duration;
-    existing.avgWait = `${existing.duration} min`;
+    fields.duration = typeof data.duration === 'string' ? Number(data.duration) : data.duration;
+    fields.avgWait = `${fields.duration} min`;
   }
-  if (data.priority !== undefined) existing.priority = data.priority;
+  if (data.priority !== undefined) fields.priority = data.priority;
 
-  return { success: true, data: existing };
+  if (Object.keys(fields).length === 0) {
+    return { success: true, data: existing };
+  }
+
+  const updated = await updateServiceById(id, fields);
+  return { success: true, data: updated };
 }
 
-export function listServices() {
-  return { success: true, data: [...services] };
+export async function listServices() {
+  const rows = await selectAllServices();
+  return { success: true, data: rows };
 }
 
-export function getServiceById(id) {
-  const service = services.find((s) => s.id === id);
+export async function getServiceById(id) {
+  const service = await selectServiceById(id);
   if (!service) {
-    return { success: false, errors: ["Service not found"] };
+    return { success: false, errors: ['Service not found'] };
   }
   return { success: true, data: service };
 }
 
-export function deleteService(id) {
-  const index = services.findIndex((s) => s.id === id);
-  if (index === -1) {
-    return { success: false, errors: ["Service not found"] };
+export async function deleteService(id) {
+  const removed = await deleteServiceById(id);
+  if (!removed) {
+    return { success: false, errors: ['Service not found'] };
   }
-  const removed = services.splice(index, 1)[0];
   return { success: true, data: removed };
 }
 
-export function findServiceByName(query) {
-  if (!query || typeof query !== "string" || query.trim().length === 0) {
-    return { success: false, errors: ["Search query is required"] };
+export async function findServiceByName(query) {
+  if (!query || typeof query !== 'string' || query.trim().length === 0) {
+    return { success: false, errors: ['Search query is required'] };
   }
-  const results = services.filter((s) =>
-    s.name.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const results = await searchServicesByName(query.trim());
   return { success: true, data: results };
 }

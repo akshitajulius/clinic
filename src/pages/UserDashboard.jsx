@@ -3,40 +3,47 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useNotifications } from '../context/NotificationContext';
 import styles from './UserDashboard.module.css';
-import { listServices, getQueuePosition } from '../backend/api';
+import { getQueuePosition } from '../backend/api';
+import { syncServices } from '../backend/data/store.js';
+
+const API = 'http://localhost:3001';
 
 export default function UserDashboard() {
   const navigate = useNavigate(); 
   const { addNotification } = useNotifications();
 
-  // State for live data from the backend
   const [services, setServices] = useState([]);
   const [activeQueue, setActiveQueue] = useState(null);
 
-  // Hardcoded for assignment phase consistency
   const userId = 'patient-123';
 
   useEffect(() => {
-    // 1. Fetch all clinic services from the backend
-    const servicesResult = listServices();
-    if (servicesResult.success) {
-      setServices(servicesResult.data);
+    const loadData = async () => {
+      try {
+        const res = await fetch(`${API}/services`);
+        const servicesResult = await res.json();
+        if (servicesResult.success) {
+          setServices(servicesResult.data);
+          syncServices(servicesResult.data);
 
-      // 2. Check if the user is currently waiting in any of these service queues
-      for (const service of servicesResult.data) {
-        const posResult = getQueuePosition(userId, service.id);
-        if (posResult.success) {
-          // Found an active queue! Save it to state and stop searching
-          setActiveQueue({
-            serviceName: service.name,
-            position: posResult.data.position,
-            estWait: posResult.data.estimatedWaitTime,
-            status: posResult.data.position === 1 ? 'Next Up' : 'Waiting'
-          });
-          break; 
+          for (const service of servicesResult.data) {
+            const posResult = getQueuePosition(userId, service.id);
+            if (posResult.success) {
+              setActiveQueue({
+                serviceName: service.name,
+                position: posResult.data.position,
+                estWait: posResult.data.estimatedWaitTime,
+                status: posResult.data.position === 1 ? 'Next Up' : 'Waiting'
+              });
+              break; 
+            }
+          }
         }
+      } catch {
+        /* network error */
       }
-    }
+    };
+    loadData();
   }, []);
 
   return (
