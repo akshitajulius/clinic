@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import styles from './JoinQueuePage.module.css';
-import { listServices, joinQueue, leaveQueue } from '../backend/api'; 
+import { joinQueue, leaveQueue } from '../backend/api'; 
+import { syncServices } from '../backend/data/store.js';
+
+const API = 'http://localhost:3001';
 
 export default function JoinQueuePage() {
   const navigate = useNavigate(); 
@@ -12,12 +15,20 @@ export default function JoinQueuePage() {
   const [joined, setJoined] = useState(false);
   const [ticketId, setTicketId] = useState(null); 
 
-  // Fetch the live services from the backend when the page loads
   useEffect(() => {
-    const result = listServices();
-    if (result.success) {
-      setServices(result.data);
-    }
+    const loadServices = async () => {
+      try {
+        const res = await fetch(`${API}/services`);
+        const json = await res.json();
+        if (json.success) {
+          setServices(json.data);
+          syncServices(json.data);
+        }
+      } catch {
+        /* network error */
+      }
+    };
+    loadServices();
   }, []);
 
   const handleJoin = (e) => {
@@ -28,23 +39,21 @@ export default function JoinQueuePage() {
       return;
     }
 
-    // Call the backend API to join the queue
     const result = joinQueue({
-      userId: 'patient-123', // Hardcoded user ID for this assignment phase
+      userId: 'patient-123',
       serviceId: Number(selectedService)
     });
 
     if (result.success) {
       setError('');
       setJoined(true);
-      setTicketId(result.data.id); // Save the queue ticket ID 
+      setTicketId(result.data.id);
     } else {
       setError(result.errors.join(', '));
     }
   };
 
   const handleLeave = () => {
-    // Call the backend API to remove the user from the line
     if (ticketId) {
       leaveQueue(ticketId);
     }
@@ -82,7 +91,6 @@ export default function JoinQueuePage() {
               >
                 <option value="">-- Choose a service --</option>
                 {services.map(s => (
-                  // Using s.id as value, assuming all services are open for now
                   <option key={s.id} value={s.id}>
                     {s.name} 
                   </option>

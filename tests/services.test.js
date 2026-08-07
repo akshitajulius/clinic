@@ -1,3 +1,23 @@
+import { jest } from '@jest/globals';
+
+jest.mock('../src/backend/data/serviceDb.js', () => ({
+  insertService: jest.fn(),
+  selectAllServices: jest.fn(),
+  selectServiceById: jest.fn(),
+  updateServiceById: jest.fn(),
+  deleteServiceById: jest.fn(),
+  searchServicesByName: jest.fn(),
+}));
+
+import {
+  insertService,
+  selectAllServices,
+  selectServiceById,
+  updateServiceById,
+  deleteServiceById,
+  searchServicesByName,
+} from '../src/backend/data/serviceDb.js';
+
 import {
   createService,
   updateService,
@@ -6,25 +26,20 @@ import {
   deleteService,
   findServiceByName,
 } from '../src/backend/modules/services.js';
-import { services } from '../src/backend/data/store.js';
-
-const SEED_SERVICES = [
-  { id: 1, name: 'General Checkup', description: 'Routine health assessment', duration: 20, priority: 'high', avgWait: '18 min' },
-  { id: 2, name: 'Vaccination', description: 'Immunization services', duration: 10, priority: 'medium', avgWait: '5 min' },
-  { id: 3, name: 'Lab Draw', description: 'Blood work collection', duration: 15, priority: 'medium', avgWait: '—' },
-];
 
 beforeEach(() => {
-  services.length = 0;
-  SEED_SERVICES.forEach((s) => services.push({ ...s }));
+  jest.clearAllMocks();
 });
 
 // ---------------------------------------------------------------------------
 // createService
 // ---------------------------------------------------------------------------
 describe('createService', () => {
-  test('creates a service with all valid fields', () => {
-    const result = createService({
+  test('creates a service with all valid fields', async () => {
+    const mockSaved = { id: 1, name: 'Dental Cleaning', description: 'Teeth cleaning service', duration: 30, priority: 'high', avgWait: '30 min', created_at: '2026-01-01', updated_at: '2026-01-01' };
+    insertService.mockResolvedValue(mockSaved);
+
+    const result = await createService({
       name: 'Dental Cleaning',
       description: 'Teeth cleaning service',
       duration: 30,
@@ -37,10 +52,20 @@ describe('createService', () => {
     expect(result.data.priority).toBe('high');
     expect(result.data.avgWait).toBe('30 min');
     expect(result.data.id).toBeDefined();
+    expect(insertService).toHaveBeenCalledWith({
+      name: 'Dental Cleaning',
+      description: 'Teeth cleaning service',
+      duration: 30,
+      priority: 'high',
+      avgWait: '30 min',
+    });
   });
 
-  test('defaults priority to low when not provided', () => {
-    const result = createService({
+  test('defaults priority to low when not provided', async () => {
+    const mockSaved = { id: 2, name: 'X-Ray', description: 'Diagnostic imaging', duration: 15, priority: 'low', avgWait: '15 min' };
+    insertService.mockResolvedValue(mockSaved);
+
+    const result = await createService({
       name: 'X-Ray',
       description: 'Diagnostic imaging',
       duration: 15,
@@ -49,19 +74,26 @@ describe('createService', () => {
     expect(result.data.priority).toBe('low');
   });
 
-  test('trims whitespace from name and description', () => {
-    const result = createService({
+  test('trims whitespace from name and description', async () => {
+    const mockSaved = { id: 3, name: 'Therapy', description: 'Physical therapy session', duration: 45, priority: 'low', avgWait: '45 min' };
+    insertService.mockResolvedValue(mockSaved);
+
+    const result = await createService({
       name: '  Therapy  ',
       description: '  Physical therapy session  ',
       duration: 45,
     });
     expect(result.success).toBe(true);
-    expect(result.data.name).toBe('Therapy');
-    expect(result.data.description).toBe('Physical therapy session');
+    expect(insertService).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Therapy', description: 'Physical therapy session' })
+    );
   });
 
-  test('accepts duration as a numeric string', () => {
-    const result = createService({
+  test('accepts duration as a numeric string', async () => {
+    const mockSaved = { id: 4, name: 'Ultrasound', description: 'Imaging scan', duration: 25, priority: 'low', avgWait: '25 min' };
+    insertService.mockResolvedValue(mockSaved);
+
+    const result = await createService({
       name: 'Ultrasound',
       description: 'Imaging scan',
       duration: '25',
@@ -71,93 +103,91 @@ describe('createService', () => {
     expect(result.data.avgWait).toBe('25 min');
   });
 
-  test('adds the service to the in-memory store', () => {
-    const before = services.length;
-    createService({ name: 'New', description: 'Desc', duration: 5 });
-    expect(services.length).toBe(before + 1);
+  test('calls insertService on the DB layer', async () => {
+    const mockSaved = { id: 5, name: 'New', description: 'Desc', duration: 5, priority: 'low', avgWait: '5 min' };
+    insertService.mockResolvedValue(mockSaved);
+
+    await createService({ name: 'New', description: 'Desc', duration: 5 });
+    expect(insertService).toHaveBeenCalledTimes(1);
   });
 
-  // --- validation: missing fields ---
-  test('fails when name is missing', () => {
-    const result = createService({ description: 'Desc', duration: 10 });
+  test('fails when name is missing', async () => {
+    const result = await createService({ description: 'Desc', duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors[0]).toContain('name');
+    expect(insertService).not.toHaveBeenCalled();
   });
 
-  test('fails when description is missing', () => {
-    const result = createService({ name: 'Svc', duration: 10 });
+  test('fails when description is missing', async () => {
+    const result = await createService({ name: 'Svc', duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors[0]).toContain('description');
   });
 
-  test('fails when duration is missing', () => {
-    const result = createService({ name: 'Svc', description: 'Desc' });
+  test('fails when duration is missing', async () => {
+    const result = await createService({ name: 'Svc', description: 'Desc' });
     expect(result.success).toBe(false);
     expect(result.errors[0]).toContain('duration');
   });
 
-  test('fails when all fields are missing', () => {
-    const result = createService({});
+  test('fails when all fields are missing', async () => {
+    const result = await createService({});
     expect(result.success).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  // --- validation: field types ---
-  test('fails when name is not a string', () => {
-    const result = createService({ name: 123, description: 'Desc', duration: 10 });
+  test('fails when name is not a string', async () => {
+    const result = await createService({ name: 123, description: 'Desc', duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors).toContain('name must be a string');
   });
 
-  test('fails when description is not a string', () => {
-    const result = createService({ name: 'Svc', description: 999, duration: 10 });
+  test('fails when description is not a string', async () => {
+    const result = await createService({ name: 'Svc', description: 999, duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors).toContain('description must be a string');
   });
 
-  test('fails when duration is not a valid number', () => {
-    const result = createService({ name: 'Svc', description: 'D', duration: 'abc' });
+  test('fails when duration is not a valid number', async () => {
+    const result = await createService({ name: 'Svc', description: 'D', duration: 'abc' });
     expect(result.success).toBe(false);
     expect(result.errors).toContain('duration must be a number');
   });
 
-  // --- validation: field length ---
-  test('fails when name is empty after trim', () => {
-    const result = createService({ name: '   ', description: 'Desc', duration: 10 });
+  test('fails when name is empty after trim', async () => {
+    const result = await createService({ name: '   ', description: 'Desc', duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('name'))).toBe(true);
   });
 
-  test('fails when name exceeds 100 characters', () => {
+  test('fails when name exceeds 100 characters', async () => {
     const longName = 'A'.repeat(101);
-    const result = createService({ name: longName, description: 'D', duration: 10 });
+    const result = await createService({ name: longName, description: 'D', duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('name'))).toBe(true);
   });
 
-  test('fails when description exceeds 500 characters', () => {
+  test('fails when description exceeds 500 characters', async () => {
     const longDesc = 'B'.repeat(501);
-    const result = createService({ name: 'Svc', description: longDesc, duration: 10 });
+    const result = await createService({ name: 'Svc', description: longDesc, duration: 10 });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('description'))).toBe(true);
   });
 
-  // --- validation: duration ---
-  test('fails when duration is zero', () => {
-    const result = createService({ name: 'Svc', description: 'D', duration: 0 });
+  test('fails when duration is zero', async () => {
+    const result = await createService({ name: 'Svc', description: 'D', duration: 0 });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('duration'))).toBe(true);
   });
 
-  test('fails when duration is negative', () => {
-    const result = createService({ name: 'Svc', description: 'D', duration: -5 });
+  test('fails when duration is negative', async () => {
+    const result = await createService({ name: 'Svc', description: 'D', duration: -5 });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('duration'))).toBe(true);
   });
 
-  // --- validation: priority enum ---
-  test('fails when priority is an invalid value', () => {
-    const result = createService({ name: 'Svc', description: 'D', duration: 10, priority: 'urgent' });
+  test('fails when priority is an invalid value', async () => {
+    const result = await createService({ name: 'Svc', description: 'D', duration: 10, priority: 'urgent' });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('priority'))).toBe(true);
   });
@@ -167,73 +197,104 @@ describe('createService', () => {
 // updateService
 // ---------------------------------------------------------------------------
 describe('updateService', () => {
-  test('updates the name of an existing service', () => {
-    const result = updateService(1, { name: 'Updated Checkup' });
+  const mockService = { id: 1, name: 'General Checkup', description: 'Routine health assessment', duration: 20, priority: 'high', avgWait: '18 min' };
+
+  test('updates the name of an existing service', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+    updateServiceById.mockResolvedValue({ ...mockService, name: 'Updated Checkup' });
+
+    const result = await updateService(1, { name: 'Updated Checkup' });
     expect(result.success).toBe(true);
     expect(result.data.name).toBe('Updated Checkup');
   });
 
-  test('updates the description', () => {
-    const result = updateService(1, { description: 'New description' });
+  test('updates the description', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+    updateServiceById.mockResolvedValue({ ...mockService, description: 'New description' });
+
+    const result = await updateService(1, { description: 'New description' });
     expect(result.success).toBe(true);
     expect(result.data.description).toBe('New description');
   });
 
-  test('updates duration and recalculates avgWait', () => {
-    const result = updateService(1, { duration: 35 });
+  test('updates duration and recalculates avgWait', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+    updateServiceById.mockResolvedValue({ ...mockService, duration: 35, avgWait: '35 min' });
+
+    const result = await updateService(1, { duration: 35 });
     expect(result.success).toBe(true);
     expect(result.data.duration).toBe(35);
     expect(result.data.avgWait).toBe('35 min');
   });
 
-  test('updates priority', () => {
-    const result = updateService(1, { priority: 'low' });
+  test('updates priority', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+    updateServiceById.mockResolvedValue({ ...mockService, priority: 'low' });
+
+    const result = await updateService(1, { priority: 'low' });
     expect(result.success).toBe(true);
     expect(result.data.priority).toBe('low');
   });
 
-  test('can update multiple fields at once', () => {
-    const result = updateService(2, { name: 'Flu Shot', duration: 5, priority: 'high' });
+  test('can update multiple fields at once', async () => {
+    selectServiceById.mockResolvedValue({ id: 2, name: 'Vaccination', description: 'Immunization services', duration: 10, priority: 'medium', avgWait: '5 min' });
+    updateServiceById.mockResolvedValue({ id: 2, name: 'Flu Shot', description: 'Immunization services', duration: 5, priority: 'high', avgWait: '5 min' });
+
+    const result = await updateService(2, { name: 'Flu Shot', duration: 5, priority: 'high' });
     expect(result.success).toBe(true);
     expect(result.data.name).toBe('Flu Shot');
     expect(result.data.duration).toBe(5);
     expect(result.data.priority).toBe('high');
   });
 
-  test('handles duration provided as a string', () => {
-    const result = updateService(1, { duration: '40' });
+  test('handles duration provided as a string', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+    updateServiceById.mockResolvedValue({ ...mockService, duration: 40, avgWait: '40 min' });
+
+    const result = await updateService(1, { duration: '40' });
     expect(result.success).toBe(true);
     expect(result.data.duration).toBe(40);
   });
 
-  test('fails when service id does not exist', () => {
-    const result = updateService(999, { name: 'Nope' });
+  test('fails when service id does not exist', async () => {
+    selectServiceById.mockResolvedValue(null);
+
+    const result = await updateService(999, { name: 'Nope' });
     expect(result.success).toBe(false);
     expect(result.errors).toContain('Service not found');
   });
 
-  test('fails when name is not a string', () => {
-    const result = updateService(1, { name: 42 });
+  test('fails when name is not a string', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+
+    const result = await updateService(1, { name: 42 });
     expect(result.success).toBe(false);
     expect(result.errors).toContain('name must be a string');
   });
 
-  test('fails when priority is invalid', () => {
-    const result = updateService(1, { priority: 'critical' });
+  test('fails when priority is invalid', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+
+    const result = await updateService(1, { priority: 'critical' });
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => e.includes('priority'))).toBe(true);
   });
 
-  test('fails when duration is non-numeric string', () => {
-    const result = updateService(1, { duration: 'slow' });
+  test('fails when duration is non-numeric string', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+
+    const result = await updateService(1, { duration: 'slow' });
     expect(result.success).toBe(false);
     expect(result.errors).toContain('duration must be a number');
   });
 
-  test('persists update in the store', () => {
-    updateService(2, { name: 'Updated Vax' });
-    const stored = services.find((s) => s.id === 2);
-    expect(stored.name).toBe('Updated Vax');
+  test('returns existing service when no fields provided', async () => {
+    selectServiceById.mockResolvedValue(mockService);
+
+    const result = await updateService(1, {});
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(mockService);
+    expect(updateServiceById).not.toHaveBeenCalled();
   });
 });
 
@@ -241,22 +302,26 @@ describe('updateService', () => {
 // listServices
 // ---------------------------------------------------------------------------
 describe('listServices', () => {
-  test('returns all seeded services', () => {
-    const result = listServices();
+  test('returns all services from DB', async () => {
+    const mockRows = [
+      { id: 1, name: 'General Checkup', description: 'Routine health assessment', duration: 20, priority: 'high', avgWait: '18 min' },
+      { id: 2, name: 'Vaccination', description: 'Immunization services', duration: 10, priority: 'medium', avgWait: '5 min' },
+      { id: 3, name: 'Lab Draw', description: 'Blood work collection', duration: 15, priority: 'medium', avgWait: '—' },
+    ];
+    selectAllServices.mockResolvedValue(mockRows);
+
+    const result = await listServices();
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(3);
+    expect(selectAllServices).toHaveBeenCalledTimes(1);
   });
 
-  test('returns a copy, not the original array', () => {
-    const result = listServices();
-    result.data.push({ id: 99, name: 'Extra' });
-    expect(services.length).toBe(3);
-  });
+  test('returns empty array when no services exist', async () => {
+    selectAllServices.mockResolvedValue([]);
 
-  test('reflects newly added services', () => {
-    createService({ name: 'New Svc', description: 'D', duration: 5 });
-    const result = listServices();
-    expect(result.data.length).toBe(4);
+    const result = await listServices();
+    expect(result.success).toBe(true);
+    expect(result.data.length).toBe(0);
   });
 });
 
@@ -264,14 +329,20 @@ describe('listServices', () => {
 // getServiceById
 // ---------------------------------------------------------------------------
 describe('getServiceById', () => {
-  test('returns the correct service', () => {
-    const result = getServiceById(2);
+  test('returns the correct service', async () => {
+    const mockService = { id: 2, name: 'Vaccination', description: 'Immunization services', duration: 10, priority: 'medium', avgWait: '5 min' };
+    selectServiceById.mockResolvedValue(mockService);
+
+    const result = await getServiceById(2);
     expect(result.success).toBe(true);
     expect(result.data.name).toBe('Vaccination');
+    expect(selectServiceById).toHaveBeenCalledWith(2);
   });
 
-  test('fails for a non-existent id', () => {
-    const result = getServiceById(999);
+  test('fails for a non-existent id', async () => {
+    selectServiceById.mockResolvedValue(null);
+
+    const result = await getServiceById(999);
     expect(result.success).toBe(false);
     expect(result.errors).toContain('Service not found');
   });
@@ -281,23 +352,22 @@ describe('getServiceById', () => {
 // deleteService
 // ---------------------------------------------------------------------------
 describe('deleteService', () => {
-  test('removes the service and returns it', () => {
-    const result = deleteService(3);
+  test('removes the service and returns it', async () => {
+    const mockService = { id: 3, name: 'Lab Draw', description: 'Blood work collection', duration: 15, priority: 'medium', avgWait: '—' };
+    deleteServiceById.mockResolvedValue(mockService);
+
+    const result = await deleteService(3);
     expect(result.success).toBe(true);
     expect(result.data.id).toBe(3);
-    expect(services.length).toBe(2);
+    expect(deleteServiceById).toHaveBeenCalledWith(3);
   });
 
-  test('fails for a non-existent id', () => {
-    const result = deleteService(999);
+  test('fails for a non-existent id', async () => {
+    deleteServiceById.mockResolvedValue(null);
+
+    const result = await deleteService(999);
     expect(result.success).toBe(false);
     expect(result.errors).toContain('Service not found');
-  });
-
-  test('service no longer listed after deletion', () => {
-    deleteService(1);
-    const result = getServiceById(1);
-    expect(result.success).toBe(false);
   });
 });
 
@@ -305,37 +375,47 @@ describe('deleteService', () => {
 // findServiceByName
 // ---------------------------------------------------------------------------
 describe('findServiceByName', () => {
-  test('finds services matching a partial name', () => {
-    const result = findServiceByName('check');
+  test('finds services matching a partial name', async () => {
+    const mockResults = [{ id: 1, name: 'General Checkup', description: 'Routine health assessment', duration: 20, priority: 'high', avgWait: '18 min' }];
+    searchServicesByName.mockResolvedValue(mockResults);
+
+    const result = await findServiceByName('check');
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(1);
     expect(result.data[0].name).toBe('General Checkup');
+    expect(searchServicesByName).toHaveBeenCalledWith('check');
   });
 
-  test('search is case-insensitive', () => {
-    const result = findServiceByName('LAB');
+  test('search is case-insensitive (delegates to DB)', async () => {
+    searchServicesByName.mockResolvedValue([{ id: 3, name: 'Lab Draw' }]);
+
+    const result = await findServiceByName('LAB');
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(1);
+    expect(searchServicesByName).toHaveBeenCalledWith('LAB');
   });
 
-  test('returns empty array when nothing matches', () => {
-    const result = findServiceByName('zzzzz');
+  test('returns empty array when nothing matches', async () => {
+    searchServicesByName.mockResolvedValue([]);
+
+    const result = await findServiceByName('zzzzz');
     expect(result.success).toBe(true);
     expect(result.data.length).toBe(0);
   });
 
-  test('fails when query is empty', () => {
-    const result = findServiceByName('');
+  test('fails when query is empty', async () => {
+    const result = await findServiceByName('');
+    expect(result.success).toBe(false);
+    expect(searchServicesByName).not.toHaveBeenCalled();
+  });
+
+  test('fails when query is null', async () => {
+    const result = await findServiceByName(null);
     expect(result.success).toBe(false);
   });
 
-  test('fails when query is null', () => {
-    const result = findServiceByName(null);
-    expect(result.success).toBe(false);
-  });
-
-  test('fails when query is only whitespace', () => {
-    const result = findServiceByName('   ');
+  test('fails when query is only whitespace', async () => {
+    const result = await findServiceByName('   ');
     expect(result.success).toBe(false);
   });
 });

@@ -8,7 +8,9 @@ export async function initServiceTable() {
       description VARCHAR(500) NOT NULL,
       duration INT NOT NULL CHECK (duration > 0),
       priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'low',
-      avgWait VARCHAR(20) NOT NULL
+      avgWait VARCHAR(20) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 }
@@ -18,11 +20,11 @@ export async function insertService(service) {
     'INSERT INTO services (name, description, duration, priority, avgWait) VALUES (?, ?, ?, ?, ?)',
     [service.name, service.description, service.duration, service.priority, service.avgWait]
   );
-  return { ...service, id: result.insertId };
+  return selectServiceById(result.insertId);
 }
 
 export async function selectAllServices() {
-  const [rows] = await pool.query('SELECT * FROM services');
+  const [rows] = await pool.query('SELECT * FROM services ORDER BY id ASC');
   return rows;
 }
 

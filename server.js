@@ -48,6 +48,11 @@ import {
   getUsageSummary,
 } from './src/backend/modules/history.js';
 
+// DB init
+import { initServiceTable } from './src/backend/data/serviceDb.js';
+import { initNotificationTable } from './src/backend/data/notificationDb.js';
+import { initQueueTables } from './src/backend/data/queueData.js';
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -79,40 +84,64 @@ app.post('/auth/login', (req, res) => {
 });
 
 // Services
-app.get('/services', (req, res) => {
-  const result = listServices();
-  res.json(result);
+app.get('/services', async (req, res) => {
+  try {
+    const result = await listServices();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
-app.get('/services/search', (req, res) => {
-  const { q } = req.query;
-  const result = findServiceByName(q);
-  if (!result.success) return res.status(400).json(result);
-  res.json(result);
+app.get('/services/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    const result = await findServiceByName(q);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
-app.get('/services/:id', (req, res) => {
-  const result = getServiceById(Number(req.params.id));
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+app.get('/services/:id', async (req, res) => {
+  try {
+    const result = await getServiceById(Number(req.params.id));
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
-app.post('/services', (req, res) => {
-  const result = createService(req.body);
-  if (!result.success) return res.status(400).json(result);
-  res.status(201).json(result);
+app.post('/services', async (req, res) => {
+  try {
+    const result = await createService(req.body);
+    if (!result.success) return res.status(400).json(result);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
-app.put('/services/:id', (req, res) => {
-  const result = updateService(Number(req.params.id), req.body);
-  if (!result.success) return res.status(400).json(result);
-  res.json(result);
+app.put('/services/:id', async (req, res) => {
+  try {
+    const result = await updateService(Number(req.params.id), req.body);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
-app.delete('/services/:id', (req, res) => {
-  const result = deleteService(Number(req.params.id));
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+app.delete('/services/:id', async (req, res) => {
+  try {
+    const result = await deleteService(Number(req.params.id));
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
 // Queue 
@@ -230,8 +259,18 @@ app.get('/history/summary', (req, res) => {
 
 //Start server
 const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`QueueSmart API running at http://localhost:${PORT}`);
-});
+
+async function startServer() {
+  await initServiceTable();
+  await initNotificationTable();
+  await initQueueTables();
+  console.log('Database tables initialized.');
+
+  app.listen(PORT, () => {
+    console.log(`QueueSmart API running at http://localhost:${PORT}`);
+  });
+}
+
+startServer();
 
 export default app;

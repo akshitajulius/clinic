@@ -16,3 +16,10 @@ let nextId = { service: 4, queue: 5 };
 export function generateId(type) {
   return nextId[type]++;
 }
+
+export function syncServices(dbServices) {
+  services.length = 0;
+  dbServices.forEach(s => services.push(s));
+  const maxId = dbServices.reduce((max, s) => Math.max(max, s.id), 0);
+  nextId.service = maxId + 1;
+}
