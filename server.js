@@ -3,7 +3,11 @@ import express from 'express';
 import cors from 'cors';
 
 // Auth
-import { registerUser, loginUser } from './src/backend/modules/auth.js';
+import {
+  registerUser,
+  loginUser,
+  requireAdmin
+} from './src/backend/modules/auth.js';
 
 // Services
 import {
@@ -52,6 +56,7 @@ import {
 import { initServiceTable } from './src/backend/data/serviceDb.js';
 import { initNotificationTable } from './src/backend/data/notificationDb.js';
 import { initQueueTables } from './src/backend/data/queueData.js';
+import { initUserTables } from './src/backend/data/userDb.js';
 
 const app = express();
 app.use(cors());
@@ -63,24 +68,60 @@ app.get('/', (req, res) => {
 });
 
 //  Auth 
-app.post('/auth/register', (req, res) => {
+app.post('/auth/register', async (req, res) => {
+
   const { email, password } = req.body;
+
   try {
-    const user = registerUser(email, password);
-    res.status(201).json({ success: true, data: user });
+
+    const user =
+      await registerUser(
+        email,
+        password
+      );
+
+    res.status(201).json({
+      success: true,
+      data: user
+    });
+
   } catch (err) {
-    res.status(400).json({ success: false, errors: [err.message] });
+
+    res.status(400).json({
+      success: false,
+      errors: [err.message]
+    });
+
   }
+
 });
 
-app.post('/auth/login', (req, res) => {
+app.post('/auth/login', async (req, res) => {
+
   const { email, password } = req.body;
+
   try {
-    const user = loginUser(email, password);
-    res.json({ success: true, data: user });
+
+    const user =
+      await loginUser(
+        email,
+        password
+      );
+
+    res.json({
+      success: true,
+      data: user
+    });
+
   } catch (err) {
-    res.status(401).json({ success: false, errors: [err.message] });
+
+    res.status(401).json({
+      success: false,
+      errors: [err.message]
+    });
+
   }
+
 });
 
 // Services
@@ -184,14 +225,40 @@ app.post('/queue/leave', (req, res) => {
   res.json(result);
 });
 
-app.post('/queue/:serviceId/serve', (req, res) => {
-  const result = serveNext(Number(req.params.serviceId));
-  if (!result.success) return res.status(400).json(result);
+app.post('/queue/:serviceId/serve', async (req, res) => {
 
-  //Add to history
-  addHistoryEntry(result.data.userId, result.data.serviceId, 'served');
+  try {
 
-  res.json(result);
+    const { role } = req.body;
+
+    requireAdmin({ role });
+
+    const result =
+      await serveNext(
+        Number(req.params.serviceId)
+      );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    await addHistoryEntry(
+      result.data.userId,
+      result.data.serviceId,
+      'served'
+    );
+
+    res.json(result);
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
 });
 
 app.get('/queue/:serviceId/position/:userId', (req, res) => {
@@ -264,6 +331,8 @@ async function startServer() {
   await initServiceTable();
   await initNotificationTable();
   await initQueueTables();
+  await initUserTables(); 
+
   console.log('Database tables initialized.');
 
   app.listen(PORT, () => {

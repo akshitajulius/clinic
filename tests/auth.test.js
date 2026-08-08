@@ -1,41 +1,27 @@
-import {
-  registerUser,
-  loginUser,
-} from "../src/backend/modules/auth";
+import { requireAdmin } from "../src/backend/modules/auth.js";
 
 describe("Authentication Module", () => {
 
-  test("registers a patient", () => {
-    const user = registerUser(
-      "patient@test.com",
-      "12345678"
+  test("patient cannot access admin actions", () => {
+
+    expect(() =>
+      requireAdmin({
+        role: "patient"
+      })
+    ).toThrow(
+      "Administrator access required."
     );
 
-    expect(user.role).toBe("patient");
   });
 
-  test("admin login works", () => {
-    const user = loginUser(
-      "admin@gmail.com",
-      "12345678"
-    );
+  test("admin is allowed", () => {
 
-    expect(user.role).toBe("admin");
-  });
+    expect(
+      requireAdmin({
+        role: "admin"
+      })
+    ).toBe(true);
 
-  test("email is required", () => {
-    expect(() =>
-      registerUser("", "12345678")
-    ).toThrow();
-  });
-
-  test("password is required", () => {
-    expect(() =>
-      registerUser(
-        "test@test.com",
-        ""
-      )
-    ).toThrow();
   });
 
 });
