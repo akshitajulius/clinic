@@ -9,6 +9,13 @@ import {
   requireAdmin
 } from './src/backend/modules/auth.js';
 
+import {
+  generateUserParticipationReport,
+  generateServiceActivityReport,
+  generateQueueStatisticsReport,
+  generatePDFReport
+} from './src/backend/modules/reports.js';
+
 // Services
 import {
   createService,
@@ -187,56 +194,69 @@ app.delete('/services/:id', async (req, res) => {
 
 // Queue 
 app.get('/queue', async (req, res) => {
-  const result = await viewAllQueues();
-  res.json(result);
+  try {
+    const result = await viewAllQueues();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Failed to fetch all queues.'] });
+  }
 });
 
 app.get('/queue/:serviceId', async (req, res) => {
-  const result = await viewQueue(Number(req.params.serviceId));
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+  try {
+    const result = await viewQueue(Number(req.params.serviceId));
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Failed to fetch queue.'] });
+  }
 });
 
 app.post('/queue/join', async (req, res) => {
-  const result = await joinQueue(req.body);
-  if (!result.success) return res.status(400).json(result);
+  try {
+    const result = await joinQueue(req.body);
+    if (!result.success) return res.status(400).json(result);
 
-  //Auto-notify the user they joined
-  const { userId, serviceId } = req.body;
-  const queueData = await viewQueue(serviceId);
-  if (queueData.success) {
-    const position = queueData.data.queue.find(e => e.userId === userId)?.position || 1;
-    const serviceName = queueData.data.serviceName;
-    notifyQueueJoined(userId, serviceName, position);
+    // Auto-notify the user they joined
+    const { userId, serviceId } = req.body;
+    const queueData = await viewQueue(serviceId);
+    
+    if (queueData.success) {
+      const position = queueData.data.queue.find(e => e.userId === userId)?.position || 1;
+      const serviceName = queueData.data.serviceName;
+      notifyQueueJoined(userId, serviceName, position);
 
-    //Notify if almost ready (position 1 or 2)
-    if (position <= 2) {
-      notifyAlmostReady(userId, serviceName);
+      // Notify if almost ready (position 1 or 2)
+      if (position <= 2) {
+        notifyAlmostReady(userId, serviceName);
+      }
     }
-  }
 
-  res.status(201).json(result);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Internal server error while joining queue.'] });
+  }
 });
 
 app.post('/queue/leave', async (req, res) => {
-  const { queueId } = req.body;
-  const result = await leaveQueue(queueId);
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+  try {
+    const { queueId, entryId } = req.body; 
+    const idToLeave = entryId || queueId;
+    
+    const result = await leaveQueue(idToLeave);
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Internal server error while leaving queue.'] });
+  }
 });
 
 app.post('/queue/:serviceId/serve', async (req, res) => {
-
   try {
-
     const { role } = req.body;
-
     requireAdmin({ role });
 
-    const result =
-      await serveNext(
-        Number(req.params.serviceId)
-      );
+    const result = await serveNext(Number(req.params.serviceId));
 
     if (!result.success) {
       return res.status(400).json(result);
@@ -249,22 +269,19 @@ app.post('/queue/:serviceId/serve', async (req, res) => {
     );
 
     res.json(result);
-
   } catch (err) {
-
-    res.status(403).json({
-      success: false,
-      errors: [err.message]
-    });
-
+    res.status(403).json({ success: false, errors: [err.message] });
   }
-
 });
 
-app.get('/queue/:serviceId/position/:userId', (req, res) => {
-  const result = getQueuePosition(req.params.userId, Number(req.params.serviceId));
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+app.get('/queue/:serviceId/position/:userId', async (req, res) => {
+  try {
+    const result = await getQueuePosition(req.params.userId, Number(req.params.serviceId));
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Internal server error.'] });
+  }
 });
 
 //Wait-time
@@ -324,64 +341,118 @@ app.get('/history/summary', (req, res) => {
   res.json(result);
 });
 
-// Reports
-import pool from './src/backend/data/db.js';
+// user report route
+app.get('/reports/user/:userId', async (req, res) => {
 
-app.get('/reports/stats', async (req, res) => {
   try {
-    const [served] = await pool.query(
-      `SELECT COUNT(*) as count FROM queue_entries WHERE status = 'served'`
-    );
-    const [totalEntries] = await pool.query(
-      `SELECT COUNT(*) as count FROM queue_entries`
-    );
-    const [byService] = await pool.query(`
-      SELECT s.id, s.name, s.duration, s.priority,
-        COUNT(qe.id) as totalEntries,
-        SUM(CASE WHEN qe.status = 'served' THEN 1 ELSE 0 END) as servedCount,
-        SUM(CASE WHEN qe.status = 'waiting' THEN 1 ELSE 0 END) as waitingCount
-      FROM services s
-      LEFT JOIN queues q ON q.service_id = s.id
-      LEFT JOIN queue_entries qe ON qe.queue_id = q.id
-      GROUP BY s.id
-      ORDER BY s.id ASC
-    `);
-    res.json({
-      success: true,
-      data: {
-        totalServed: served[0].count,
-        totalEntries: totalEntries[0].count,
-        byService,
-      },
+
+    requireAdmin({
+      role: req.query.role
     });
+
+    const result =
+      await generateUserParticipationReport(
+        req.params.userId
+      );
+
+    res.json(result);
+
   } catch (err) {
-    res.status(500).json({ success: false, errors: [err.message] });
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
   }
+
 });
 
-app.get('/reports/history', async (req, res) => {
-  try {
-    const serviceId = req.query.serviceId;
-    let query = `
-      SELECT qe.id, qe.user_id, COALESCE(NULLIF(qe.user_name, ''), qe.user_id) as userName,
-        qe.status, qe.position, qe.join_time,
-        s.name as serviceName, s.id as serviceId
-      FROM queue_entries qe
-      JOIN queues q ON qe.queue_id = q.id
-      JOIN services s ON q.service_id = s.id
-    `;
-    const params = [];
-    if (serviceId && serviceId !== 'all') {
-      query += ' WHERE s.id = ?';
-      params.push(Number(serviceId));
-    }
-    query += ' ORDER BY qe.join_time DESC';
+// service activity report route
+app.get('/reports/service/:serviceName', async (req, res) => {
 
-    const [rows] = await pool.query(query, params);
-    res.json({ success: true, data: rows });
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const result =
+      await generateServiceActivityReport(
+        req.params.serviceName
+      );
+
+    res.json(result);
+
   } catch (err) {
-    res.status(500).json({ success: false, errors: [err.message] });
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
   }
+
+});
+
+// queue statistics route
+app.get('/reports/statistics', async (req, res) => {
+
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const result =
+      await generateQueueStatisticsReport();
+
+    res.json(result);
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
+});
+
+// PDF Report Route
+app.get('/reports/pdf', async (req, res) => {
+
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const report =
+      await generateQueueStatisticsReport();
+
+    const path =
+      await generatePDFReport(
+        'Queue Statistics Report',
+        report.data,
+        './report.pdf'
+      );
+
+    res.json({
+      success: true,
+      file: path
+    });
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
 });
 
 //Start server
