@@ -193,57 +193,70 @@ app.delete('/services/:id', async (req, res) => {
 });
 
 // Queue 
-app.get('/queue', (req, res) => {
-  const result = viewAllQueues();
-  res.json(result);
-});
-
-app.get('/queue/:serviceId', (req, res) => {
-  const result = viewQueue(Number(req.params.serviceId));
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
-});
-
-app.post('/queue/join', (req, res) => {
-  const result = joinQueue(req.body);
-  if (!result.success) return res.status(400).json(result);
-
-  //Auto-notify the user they joined
-  const { userId, serviceId } = req.body;
-  const queueData = viewQueue(serviceId);
-  if (queueData.success) {
-    const position = queueData.data.queue.find(e => e.userId === userId)?.position || 1;
-    const serviceName = queueData.data.serviceName;
-    notifyQueueJoined(userId, serviceName, position);
-
-    //Notify if almost ready (position 1 or 2)
-    if (position <= 2) {
-      notifyAlmostReady(userId, serviceName);
-    }
+app.get('/queue', async (req, res) => {
+  try {
+    const result = await viewAllQueues();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Failed to fetch all queues.'] });
   }
-
-  res.status(201).json(result);
 });
 
-app.post('/queue/leave', (req, res) => {
-  const { queueId } = req.body;
-  const result = leaveQueue(queueId);
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+app.get('/queue/:serviceId', async (req, res) => {
+  try {
+    const result = await viewQueue(Number(req.params.serviceId));
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Failed to fetch queue.'] });
+  }
+});
+
+app.post('/queue/join', async (req, res) => {
+  try {
+    const result = await joinQueue(req.body);
+    if (!result.success) return res.status(400).json(result);
+
+    // Auto-notify the user they joined
+    const { userId, serviceId } = req.body;
+    const queueData = await viewQueue(serviceId);
+    
+    if (queueData.success) {
+      const position = queueData.data.queue.find(e => e.userId === userId)?.position || 1;
+      const serviceName = queueData.data.serviceName;
+      notifyQueueJoined(userId, serviceName, position);
+
+      // Notify if almost ready (position 1 or 2)
+      if (position <= 2) {
+        notifyAlmostReady(userId, serviceName);
+      }
+    }
+
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Internal server error while joining queue.'] });
+  }
+});
+
+app.post('/queue/leave', async (req, res) => {
+  try {
+    const { queueId, entryId } = req.body; 
+    const idToLeave = entryId || queueId;
+    
+    const result = await leaveQueue(idToLeave);
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Internal server error while leaving queue.'] });
+  }
 });
 
 app.post('/queue/:serviceId/serve', async (req, res) => {
-
   try {
-
     const { role } = req.body;
-
     requireAdmin({ role });
 
-    const result =
-      await serveNext(
-        Number(req.params.serviceId)
-      );
+    const result = await serveNext(Number(req.params.serviceId));
 
     if (!result.success) {
       return res.status(400).json(result);
@@ -256,22 +269,19 @@ app.post('/queue/:serviceId/serve', async (req, res) => {
     );
 
     res.json(result);
-
   } catch (err) {
-
-    res.status(403).json({
-      success: false,
-      errors: [err.message]
-    });
-
+    res.status(403).json({ success: false, errors: [err.message] });
   }
-
 });
 
-app.get('/queue/:serviceId/position/:userId', (req, res) => {
-  const result = getQueuePosition(req.params.userId, Number(req.params.serviceId));
-  if (!result.success) return res.status(404).json(result);
-  res.json(result);
+app.get('/queue/:serviceId/position/:userId', async (req, res) => {
+  try {
+    const result = await getQueuePosition(req.params.userId, Number(req.params.serviceId));
+    if (!result.success) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Internal server error.'] });
+  }
 });
 
 //Wait-time
