@@ -3,7 +3,7 @@ import Navbar from '../../components/Navbar';
 import { useNotifications } from '../../context/NotificationContext';
 import QueueManagementPage from './QueueManagementPage';
 import PATIENT_NAMES from './Patient_Names_Mock_Data';
-import { viewAllQueues, joinQueue } from '../../backend/api';
+
 import { syncServices } from '../../backend/data/store.js';
 import styles from './DashboardPage.module.css';
 
@@ -13,12 +13,7 @@ const emptyForm = { name: '', description: '', duration: '', priority: 'low' };
 export default function DashboardPage() {
   const { addNotification } = useNotifications();
   const [services, setServices] = useState([]);
-  const [queues, setQueues] = useState(() => {
-    const result = viewAllQueues();
-    const data = result.data;
-    if (data[3]) data[3].open = false;
-    return data;
-  });
+  const [queues, setQueues] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
@@ -56,20 +51,7 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchServices(); }, []);
 
-  const refreshQueues = () => {
-    setQueues(prev => {
-      const result = viewAllQueues();
-      if (!result.success) return prev;
-      const next = {};
-      for (const key of Object.keys(result.data)) {
-        next[key] = {
-          ...result.data[key],
-          open: prev[key]?.open !== undefined ? prev[key].open : true,
-        };
-      }
-      return next;
-    });
-  };
+  const refreshQueues = () => {};
 
   const toggleQueue = (serviceId) => {
     setQueues(prev => ({
@@ -206,17 +188,7 @@ export default function DashboardPage() {
     }
     const randomService = openServices[Math.floor(Math.random() * openServices.length)];
     const randomName = PATIENT_NAMES[Math.floor(Math.random() * PATIENT_NAMES.length)];
-
-    const result = joinQueue({
-      userId: `sim-${Date.now()}`,
-      userName: randomName,
-      serviceId: randomService.id,
-    });
-
-    if (result.success) {
-      refreshQueues();
-      addNotification(`Queue update: ${randomName} joined ${randomService.name}.`, 'update');
-    }
+    addNotification(`Queue update: ${randomName} joined ${randomService.name}.`, 'update');
   };
 
   if (view === 'queue') {

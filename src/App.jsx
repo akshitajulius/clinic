@@ -23,16 +23,16 @@ export default function App() {
       <Router>
         {loggedIn ? (
           <Routes>
-            {/* Admin Route */}
-            <Route path="/admin" element={<DashboardPage />} />
+            {/* Admin Route — redirect patients away */}
+            <Route path="/admin" element={userRole === 'admin' ? <DashboardPage /> : <Navigate to="/dashboard" replace />} />
             
-            {/* Patient Routes */}
-            <Route path="/dashboard" element={<UserDashboard />} />
-            <Route path="/join" element={<JoinQueuePage />} />
-            <Route path="/status" element={<QueueStatusPage />} />
-            <Route path="/history" element={<UserHistoryPage />} />
+            {/* Patient Routes — redirect admins away */}
+            <Route path="/dashboard" element={userRole !== 'admin' ? <UserDashboard /> : <Navigate to="/admin" replace />} />
+            <Route path="/join" element={userRole !== 'admin' ? <JoinQueuePage /> : <Navigate to="/admin" replace />} />
+            <Route path="/status" element={userRole !== 'admin' ? <QueueStatusPage /> : <Navigate to="/admin" replace />} />
+            <Route path="/history" element={userRole !== 'admin' ? <UserHistoryPage /> : <Navigate to="/admin" replace />} />
             
-            {/* Fallback: if they go to a weird URL, send them to the dashboard. just in case */}
+            {/* Fallback: redirect based on role */}
             <Route path="*" element={<Navigate to={userRole === 'admin' ? '/admin' : '/dashboard'} replace />} />
           </Routes>
         ) : (

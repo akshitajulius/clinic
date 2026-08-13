@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import Navbar from '../../components/Navbar';
 import styles from './QueueManagementPage.module.css';
-import { serveNext as backendServeNext, leaveQueue as backendLeaveQueue } from '../../backend/api';
 
 export default function QueueManagementPage({ services, queues, setQueues, refreshQueues, onBack }) {
   const [selectedService, setSelectedService] = useState('all');

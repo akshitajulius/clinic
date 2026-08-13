@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useNotifications } from '../context/NotificationContext';
 import styles from './UserDashboard.module.css';
-import { getQueuePosition } from '../backend/api';
 import { syncServices } from '../backend/data/store.js';
 
 const API = 'http://localhost:3001';
@@ -25,19 +24,6 @@ export default function UserDashboard() {
         if (servicesResult.success) {
           setServices(servicesResult.data);
           syncServices(servicesResult.data);
-
-          for (const service of servicesResult.data) {
-            const posResult = getQueuePosition(userId, service.id);
-            if (posResult.success) {
-              setActiveQueue({
-                serviceName: service.name,
-                position: posResult.data.position,
-                estWait: posResult.data.estimatedWaitTime,
-                status: posResult.data.position === 1 ? 'Next Up' : 'Waiting'
-              });
-              break; 
-            }
-          }
         }
       } catch {
         /* network error */
