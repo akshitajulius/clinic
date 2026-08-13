@@ -2,26 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import styles from './QueueStatusPage.module.css';
-import { getQueuePosition } from '../backend/api';
 
 export default function QueueStatusPage() {
   const navigate = useNavigate(); 
   const [positionInfo, setPositionInfo] = useState(null);
   const [error, setError] = useState('');
 
-  // Hardcoded for assignment demonstration
   const userId = 'patient-123';
-  const serviceId = 1; // General Checkup
+  const serviceId = 1;
 
-  // Function to fetch the live status from the backend
   const fetchLiveStatus = () => {
-    const result = getQueuePosition(userId, serviceId);
-    if (result.success) {
-      setPositionInfo(result.data);
-      setError('');
-    } else {
-      setError(result.errors[0]);
-    }
+    setError('Queue status is not available yet.');
   };
 
   // Fetch status on mount

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import styles from './JoinQueuePage.module.css';
-import { joinQueue, leaveQueue } from '../backend/api'; 
+
 import { syncServices } from '../backend/data/store.js';
 
 const API = 'http://localhost:3001';
@@ -31,7 +31,7 @@ export default function JoinQueuePage() {
     loadServices();
   }, []);
 
-  const handleJoin = (e) => {
+  const handleJoin = async (e) => {
     e.preventDefault(); 
     
     if (!selectedService) {
@@ -39,23 +39,34 @@ export default function JoinQueuePage() {
       return;
     }
 
-    const result = joinQueue({
-      userId: 'patient-123',
-      serviceId: Number(selectedService)
-    });
-
-    if (result.success) {
-      setError('');
-      setJoined(true);
-      setTicketId(result.data.id);
-    } else {
-      setError(result.errors.join(', '));
+    try {
+      const res = await fetch(`${API}/queue/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'patient-123', serviceId: Number(selectedService) }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setError('');
+        setJoined(true);
+        setTicketId(result.data?.id || null);
+      } else {
+        setError(result.errors?.join(', ') || 'Failed to join queue');
+      }
+    } catch {
+      setError('Network error. Please try again.');
     }
   };
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
     if (ticketId) {
-      leaveQueue(ticketId);
+      try {
+        await fetch(`${API}/queue/leave`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryId: ticketId }),
+        });
+      } catch { /* ignore */ }
     }
     setJoined(false);
     setSelectedService('');
