@@ -9,6 +9,13 @@ import {
   requireAdmin
 } from './src/backend/modules/auth.js';
 
+import {
+  generateUserParticipationReport,
+  generateServiceActivityReport,
+  generateQueueStatisticsReport,
+  generatePDFReport
+} from './src/backend/modules/reports.js';
+
 // Services
 import {
   createService,
@@ -322,6 +329,120 @@ app.get('/history/service/:serviceId', (req, res) => {
 app.get('/history/summary', (req, res) => {
   const result = getUsageSummary();
   res.json(result);
+});
+
+// user report route
+app.get('/reports/user/:userId', async (req, res) => {
+
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const result =
+      await generateUserParticipationReport(
+        req.params.userId
+      );
+
+    res.json(result);
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
+});
+
+// service activity report route
+app.get('/reports/service/:serviceName', async (req, res) => {
+
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const result =
+      await generateServiceActivityReport(
+        req.params.serviceName
+      );
+
+    res.json(result);
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
+});
+
+// queue statistics route
+app.get('/reports/statistics', async (req, res) => {
+
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const result =
+      await generateQueueStatisticsReport();
+
+    res.json(result);
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
+});
+
+// PDF Report Route
+app.get('/reports/pdf', async (req, res) => {
+
+  try {
+
+    requireAdmin({
+      role: req.query.role
+    });
+
+    const report =
+      await generateQueueStatisticsReport();
+
+    const path =
+      await generatePDFReport(
+        'Queue Statistics Report',
+        report.data,
+        './report.pdf'
+      );
+
+    res.json({
+      success: true,
+      file: path
+    });
+
+  } catch (err) {
+
+    res.status(403).json({
+      success: false,
+      errors: [err.message]
+    });
+
+  }
+
 });
 
 //Start server
