@@ -3,24 +3,86 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import styles from './QueueStatusPage.module.css';
 
+const API = 'http://localhost:3001';
+
 export default function QueueStatusPage() {
   const navigate = useNavigate(); 
   const [positionInfo, setPositionInfo] = useState(null);
   const [error, setError] = useState('');
+  
+  const [activeServiceName, setActiveServiceName] = useState('Loading...');
+  const [activeServiceId, setActiveServiceId] = useState(null);
 
   const userId = 'patient-123';
-  const serviceId = 1;
 
-  const fetchLiveStatus = () => {
-    setError('Queue status is not available yet.');
+  const fetchLiveStatus = async () => {
+    try {
+      const servicesRes = await fetch(`${API}/services`);
+      const servicesJson = await servicesRes.json();
+      
+      if (servicesJson.success) {
+        for (const service of servicesJson.data) {
+          const positionRes = await fetch(`${API}/queue/${service.id}/position/${userId}`);
+          const positionData = await positionRes.json();
+          
+          if (positionData.success) {
+            setPositionInfo(positionData.data);
+            setActiveServiceName(service.name);
+            setActiveServiceId(service.id);
+            setError(''); 
+            return; 
+          }
+        }
+        
+        setError('User is not currently in any queue. (Join the queue first!)');
+        setActiveServiceName('No Active Queue');
+        setActiveServiceId(null);
+      }
+    } catch (err) {
+      setError('Network error while fetching queue status.');
+    }
   };
 
-  // Fetch status on mount
+const handleLeaveQueue = async () => {
+    if (!activeServiceId) return;
+
+    try {
+      const queueRes = await fetch(`${API}/queue/${activeServiceId}`);
+      const queueJson = await queueRes.json();
+
+      if (queueJson.success) {
+         const myEntries = queueJson.data.queue.filter(q => q.userId === userId);
+         
+         for (const entry of myEntries) {
+            // 1. Cancel the active ticket
+            await fetch(`${API}/queue/leave`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ entryId: entry.id })
+            });
+
+            // 2. Log the cancellation in the user's history
+            await fetch(`${API}/history`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ 
+                 userId: userId, 
+                 serviceId: activeServiceId, 
+                 outcome: 'Left Queue' 
+               })
+            });
+         }
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Failed to leave queue:', err);
+    }
+  };
+
   useEffect(() => {
     fetchLiveStatus();
   }, []);
 
-  // Determine UI phase based on backend position
   let phase = 0; 
   let label = 'Waiting';
   let colorClass = styles.waiting;
@@ -45,10 +107,20 @@ export default function QueueStatusPage() {
         <div className={styles.pageHeader}>
           <div>
             <h1 className={styles.heading}>Live Queue Status</h1>
-            <p className={styles.sub}>General Checkup</p>
+            <p className={styles.sub}>{activeServiceName}</p>
           </div>
           
           <div style={{ display: 'flex', gap: '12px' }}>
+            {activeServiceId && (
+              <button 
+                className={styles.simulateBtn} 
+                onClick={handleLeaveQueue}
+                style={{ borderColor: '#ef4444', color: '#ef4444' }}
+              >
+                Leave Queue
+              </button>
+            )}
+
             <button 
               className={styles.simulateBtn} 
               onClick={() => navigate('/dashboard')}
@@ -56,7 +128,6 @@ export default function QueueStatusPage() {
               Return to Dashboard
             </button>
 
-            {/* Changed from simulating time passing to fetching actual live updates */}
             <button className={styles.simulateBtn} onClick={fetchLiveStatus}>
               Refresh Status
             </button>
@@ -65,7 +136,7 @@ export default function QueueStatusPage() {
 
         <div className={styles.card}>
           {error ? (
-            <div className={styles.errorText}>{error} (Join the queue first!)</div>
+            <div className={styles.errorText}>{error}</div>
           ) : (
             <>
               <div className={styles.statusHeader}>
