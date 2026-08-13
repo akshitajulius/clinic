@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import { useNotifications } from '../../context/NotificationContext';
 import QueueManagementPage from './QueueManagementPage';
+import ReportPage from './ReportPage';
 import PATIENT_NAMES from './Patient_Names_Mock_Data';
 
 import { syncServices } from '../../backend/data/store.js';
@@ -51,7 +52,31 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchServices(); }, []);
 
-  const refreshQueues = () => {};
+  useEffect(() => {
+    if (services.length > 0) refreshQueues();
+  }, [services]);
+
+  const refreshQueues = async () => {
+    try {
+      const res = await fetch(`${API}/queue`);
+      const json = await res.json();
+      if (json.success) {
+        setQueues(prev => {
+          const next = {};
+          for (const s of services) {
+            const backendQ = json.data[s.id];
+            next[s.id] = {
+              open: prev[s.id]?.open !== undefined ? prev[s.id].open : true,
+              patients: backendQ ? backendQ.patients : [],
+            };
+          }
+          return next;
+        });
+      }
+    } catch {
+      /* network error */
+    }
+  };
 
   const toggleQueue = (serviceId) => {
     setQueues(prev => ({
@@ -180,7 +205,7 @@ export default function DashboardPage() {
     setFindSuggestions([]);
   };
 
-  const simulateNewQueue = () => {
+  const simulateNewQueue = async () => {
     const openServices = services.filter(s => queues[s.id]?.open);
     if (openServices.length === 0) {
       addNotification('No open queues available.', 'update');
@@ -188,7 +213,27 @@ export default function DashboardPage() {
     }
     const randomService = openServices[Math.floor(Math.random() * openServices.length)];
     const randomName = PATIENT_NAMES[Math.floor(Math.random() * PATIENT_NAMES.length)];
-    addNotification(`Queue update: ${randomName} joined ${randomService.name}.`, 'update');
+
+    try {
+      const res = await fetch(`${API}/queue/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: `sim-${Date.now()}`,
+          userName: randomName,
+          serviceId: randomService.id,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        addNotification(`Queue update: ${randomName} joined ${randomService.name}.`, 'update');
+        await refreshQueues();
+      } else {
+        addNotification(result.errors?.[0] || 'Failed to join queue.', 'error');
+      }
+    } catch {
+      addNotification('Network error simulating queue.', 'error');
+    }
   };
 
   if (view === 'queue') {
@@ -198,6 +243,15 @@ export default function DashboardPage() {
         queues={queues}
         setQueues={setQueues}
         refreshQueues={refreshQueues}
+        onBack={() => setView('dashboard')}
+      />
+    );
+  }
+
+  if (view === 'reports') {
+    return (
+      <ReportPage
+        services={services}
         onBack={() => setView('dashboard')}
       />
     );
@@ -218,6 +272,12 @@ export default function DashboardPage() {
               onClick={() => setView('queue')}
             >
               Manage Queues
+            </button>
+            <button
+              className={styles.testBtn}
+              onClick={() => setView('reports')}
+            >
+              Reports
             </button>
             <button
               className={styles.testBtn}

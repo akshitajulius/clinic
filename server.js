@@ -186,24 +186,24 @@ app.delete('/services/:id', async (req, res) => {
 });
 
 // Queue 
-app.get('/queue', (req, res) => {
-  const result = viewAllQueues();
+app.get('/queue', async (req, res) => {
+  const result = await viewAllQueues();
   res.json(result);
 });
 
-app.get('/queue/:serviceId', (req, res) => {
-  const result = viewQueue(Number(req.params.serviceId));
+app.get('/queue/:serviceId', async (req, res) => {
+  const result = await viewQueue(Number(req.params.serviceId));
   if (!result.success) return res.status(404).json(result);
   res.json(result);
 });
 
-app.post('/queue/join', (req, res) => {
-  const result = joinQueue(req.body);
+app.post('/queue/join', async (req, res) => {
+  const result = await joinQueue(req.body);
   if (!result.success) return res.status(400).json(result);
 
   //Auto-notify the user they joined
   const { userId, serviceId } = req.body;
-  const queueData = viewQueue(serviceId);
+  const queueData = await viewQueue(serviceId);
   if (queueData.success) {
     const position = queueData.data.queue.find(e => e.userId === userId)?.position || 1;
     const serviceName = queueData.data.serviceName;
@@ -218,9 +218,9 @@ app.post('/queue/join', (req, res) => {
   res.status(201).json(result);
 });
 
-app.post('/queue/leave', (req, res) => {
+app.post('/queue/leave', async (req, res) => {
   const { queueId } = req.body;
-  const result = leaveQueue(queueId);
+  const result = await leaveQueue(queueId);
   if (!result.success) return res.status(404).json(result);
   res.json(result);
 });
@@ -322,6 +322,66 @@ app.get('/history/service/:serviceId', (req, res) => {
 app.get('/history/summary', (req, res) => {
   const result = getUsageSummary();
   res.json(result);
+});
+
+// Reports
+import pool from './src/backend/data/db.js';
+
+app.get('/reports/stats', async (req, res) => {
+  try {
+    const [served] = await pool.query(
+      `SELECT COUNT(*) as count FROM queue_entries WHERE status = 'served'`
+    );
+    const [totalEntries] = await pool.query(
+      `SELECT COUNT(*) as count FROM queue_entries`
+    );
+    const [byService] = await pool.query(`
+      SELECT s.id, s.name, s.duration, s.priority,
+        COUNT(qe.id) as totalEntries,
+        SUM(CASE WHEN qe.status = 'served' THEN 1 ELSE 0 END) as servedCount,
+        SUM(CASE WHEN qe.status = 'waiting' THEN 1 ELSE 0 END) as waitingCount
+      FROM services s
+      LEFT JOIN queues q ON q.service_id = s.id
+      LEFT JOIN queue_entries qe ON qe.queue_id = q.id
+      GROUP BY s.id
+      ORDER BY s.id ASC
+    `);
+    res.json({
+      success: true,
+      data: {
+        totalServed: served[0].count,
+        totalEntries: totalEntries[0].count,
+        byService,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
+});
+
+app.get('/reports/history', async (req, res) => {
+  try {
+    const serviceId = req.query.serviceId;
+    let query = `
+      SELECT qe.id, qe.user_id, COALESCE(NULLIF(qe.user_name, ''), qe.user_id) as userName,
+        qe.status, qe.position, qe.join_time,
+        s.name as serviceName, s.id as serviceId
+      FROM queue_entries qe
+      JOIN queues q ON qe.queue_id = q.id
+      JOIN services s ON q.service_id = s.id
+    `;
+    const params = [];
+    if (serviceId && serviceId !== 'all') {
+      query += ' WHERE s.id = ?';
+      params.push(Number(serviceId));
+    }
+    query += ' ORDER BY qe.join_time DESC';
+
+    const [rows] = await pool.query(query, params);
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
 });
 
 //Start server

@@ -28,20 +28,33 @@ export default function QueueManagementPage({ services, queues, setQueues, refre
     });
   };
 
-  const removePatient = (serviceId, patientId) => {
-    backendLeaveQueue(patientId);
+  const removePatient = async (serviceId, patientId) => {
+    try {
+      await fetch('http://localhost:3001/queue/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queueId: patientId }),
+      });
+    } catch { /* network error */ }
     refreshQueues();
   };
 
-  const serveNext = (serviceId) => {
-    const result = backendServeNext(serviceId);
-    if (!result.success) return;
+  const serveNext = async (serviceId) => {
+    try {
+      const res = await fetch(`http://localhost:3001/queue/${serviceId}/serve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'admin' }),
+      });
+      const result = await res.json();
+      if (!result.success) return;
 
-    refreshQueues();
+      refreshQueues();
 
-    const serviceName = services.find(s => s.id === serviceId)?.name;
-    setServedToast(`✓ Now serving ${result.data.userName} — ${serviceName}`);
-    setTimeout(() => setServedToast(null), 3000);
+      const serviceName = services.find(s => s.id === serviceId)?.name;
+      setServedToast(`✓ Now serving ${result.data.userName || 'patient'} — ${serviceName}`);
+      setTimeout(() => setServedToast(null), 3000);
+    } catch { /* network error */ }
   };
 
   return (
