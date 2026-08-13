@@ -196,3 +196,57 @@ export async function viewAllQueues() {
     return { success: false, errors: ["Failed to fetch all queues."] };
   }
 }
+
+// Smart Feature Attempt
+export async function getAlternativeServiceRecommendation(targetServiceId) {
+  try {
+    // Fetch the entire clinic's current queue status
+    const allWaiting = await getAllActiveQueues();
+    
+    // Filter out the service the user is already looking at
+    const alternativeQueues = allWaiting.filter(entry => entry.serviceId !== Number(targetServiceId));
+    
+    if (alternativeQueues.length === 0) {
+      return null; // No other services are currently active
+    }
+
+    // Group by service to find the one with the shortest line
+    const serviceWaitTimes = {};
+    for (const entry of alternativeQueues) {
+      if (!serviceWaitTimes[entry.serviceId]) {
+        serviceWaitTimes[entry.serviceId] = {
+          serviceId: entry.serviceId,
+          serviceName: entry.serviceName,
+          estimatedWait: 0
+        };
+      }
+      
+      // Calculate total wait time based on position and duration
+      const waitTime = entry.position * entry.duration;
+      if (waitTime > serviceWaitTimes[entry.serviceId].estimatedWait) {
+         serviceWaitTimes[entry.serviceId].estimatedWait = waitTime;
+      }
+    }
+
+    // Find the service with the absolute lowest wait time
+    const alternatives = Object.values(serviceWaitTimes);
+    if (alternatives.length === 0) return null;
+    
+    alternatives.sort((a, b) => a.estimatedWait - b.estimatedWait);
+    const bestAlternative = alternatives[0];
+
+    return {
+      success: true,
+      data: {
+        message: `Tired of waiting? ${bestAlternative.serviceName} has a shorter line!`,
+        serviceId: bestAlternative.serviceId,
+        estimatedWaitTime: `${bestAlternative.estimatedWait} min`,
+        serviceName: bestAlternative.serviceName
+      }
+    };
+
+  } catch (error) {
+    console.error("Database Error in smart recommendation:", error);
+    return { success: false, errors: ["Failed to fetch recommendation"] }; 
+  }
+}

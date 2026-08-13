@@ -34,6 +34,7 @@ import {
   serveNext,
   viewAllQueues,
   getQueuePosition,
+  getAlternativeServiceRecommendation
 } from './src/backend/modules/queue.js';
 
 // Wait-time
@@ -281,6 +282,16 @@ app.get('/queue/:serviceId/position/:userId', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, errors: ['Internal server error.'] });
+  }
+});
+
+// Smart Feature Route
+app.get('/smart-recommendation/:serviceId', async (req, res) => {
+  try {
+    const result = await getAlternativeServiceRecommendation(Number(req.params.serviceId));
+    res.json(result || { success: true, data: null });
+  } catch (err) {
+    res.status(500).json({ success: false, errors: ['Failed to fetch recommendation.'] });
   }
 });
 
