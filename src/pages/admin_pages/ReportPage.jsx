@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import Navbar from '../../components/Navbar';
 import styles from './ReportPage.module.css';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import { applyPlugin } from 'jspdf-autotable';
+applyPlugin(jsPDF);
 
 const API = 'http://localhost:3001';
 
@@ -25,7 +26,7 @@ function downloadPDF(services, history, stats) {
 
   doc.setFontSize(20);
   doc.setTextColor(37, 99, 235);
-  doc.text('QueueSmart Report', pageWidth / 2, 20, { align: 'center' });
+  doc.text('Clinic Report', pageWidth / 2, 20, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setTextColor(107, 114, 128);
