@@ -14,6 +14,9 @@ export default function JoinQueuePage() {
   const [error, setError] = useState('');
   const [joined, setJoined] = useState(false);
   const [ticketId, setTicketId] = useState(null); 
+  
+  // Smart Feature: State for the recommendation
+  const [smartRec, setSmartRec] = useState(null);
 
   useEffect(() => {
     const loadServices = async () => {
@@ -50,6 +53,7 @@ export default function JoinQueuePage() {
         setError('');
         setJoined(true);
         setTicketId(result.data?.id || null);
+        setSmartRec(null); // Clear the recommendation once joined
       } else {
         setError(result.errors?.join(', ') || 'Failed to join queue');
       }
@@ -95,9 +99,26 @@ export default function JoinQueuePage() {
                 id="service-select"
                 className={`${styles.select} ${error ? styles.selectError : ''}`}
                 value={selectedService} 
-                onChange={(e) => {
-                  setSelectedService(e.target.value);
+                
+                // Smart Feature: Trigger the backend fetch when the user selects a service
+                onChange={async (e) => {
+                  const newServiceId = e.target.value;
+                  setSelectedService(newServiceId);
                   setError(''); 
+                  setSmartRec(null); // Clear old recommendations when switching
+
+                  if (newServiceId) {
+                    try {
+                      // Fetch the alternative recommendation from our new API route
+                      const res = await fetch(`${API}/smart-recommendation/${newServiceId}`);
+                      const json = await res.json();
+                      if (json.success && json.data) {
+                        setSmartRec(json.data);
+                      }
+                    } catch (err) {
+                      // Fail silently so it doesn't break the main UI
+                    }
+                  }
                 }}
               >
                 <option value="">-- Choose a service --</option>
@@ -113,6 +134,25 @@ export default function JoinQueuePage() {
               {currentServiceDetails && (
                 <div className={styles.waitTimeDisplay}>
                   <strong>Estimated Wait Time:</strong> {currentServiceDetails.avgWait}
+                </div>
+              )}
+
+              {/* Smart Feature: Display the recommendation box if one exists */}
+              {smartRec && (
+                <div style={{ backgroundColor: '#eef8ff', padding: '15px', borderRadius: '8px', marginTop: '10px', border: '1px solid #bce0fd' }}>
+                  <p style={{ margin: '0 0 10px 0', color: '#0056b3' }}>
+                    <strong>Smart Tip:</strong> {smartRec.message}
+                  </p>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setSelectedService(smartRec.serviceId.toString());
+                      setSmartRec(null); // Clear the box after they click it
+                    }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
+                  >
+                    Switch to {smartRec.serviceName} (Wait: {smartRec.estimatedWaitTime})
+                  </button>
                 </div>
               )}
 

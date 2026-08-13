@@ -8,6 +8,7 @@ jest.mock('../src/backend/data/queueData.js', () => ({
   insertQueueEntry: jest.fn(),
   updateQueueEntryStatus: jest.fn(),
   getUserQueueEntry: jest.fn(),
+  getAllActiveQueues: jest.fn(),
 }));
 
 import {
@@ -16,10 +17,16 @@ import {
   getWaitingCount,
   insertQueueEntry,
   updateQueueEntryStatus,
-  getUserQueueEntry
+  getUserQueueEntry,
+  getAllActiveQueues
 } from '../src/backend/data/queueData.js';
 
-import { joinQueue, leaveQueue, getQueuePosition } from '../src/backend/modules/queue.js';
+import { 
+  joinQueue, 
+  leaveQueue, 
+  getQueuePosition, 
+  getAlternativeServiceRecommendation
+} from '../src/backend/modules/queue.js';
 
 // Clear the database mocks before each test instead of clearing the old array
 beforeEach(() => {
@@ -87,6 +94,57 @@ describe('Queue Management - Patient Logic', () => {
     const result = await getQueuePosition('patient-unknown', 1);
     expect(result.success).toBe(false);
     expect(result.errors[0]).toBe('User is not currently in this queue.');
+  });
+  
+});
+
+// Smart Feature Tests
+describe('Smart Feature: getAlternativeServiceRecommendation', () => {
+  
+  test('should recommend the alternative service with the absolute shortest wait time', async () => {
+    // 1. Mock the database response to simulate 3 different active queues
+    const mockActiveQueues = [
+      { serviceId: 1, serviceName: 'General Checkup', position: 3, duration: 10 }, // Target: 30 min wait
+      { serviceId: 2, serviceName: 'Lab Test', position: 1, duration: 5 },         // Alternative 1: 5 min wait (Winner)
+      { serviceId: 3, serviceName: 'X-Ray', position: 5, duration: 15 }            // Alternative 2: 75 min wait
+    ];
+    
+    getAllActiveQueues.mockResolvedValue(mockActiveQueues);
+
+    // 2. Run the function, pretending the user is looking at serviceId 1
+    const result = await getAlternativeServiceRecommendation(1);
+
+    // 3. Verify it picked Service 2
+    expect(result).not.toBeNull();
+    expect(result.success).toBe(true);
+    expect(result.data.serviceId).toBe(2);
+    expect(result.data.estimatedWaitTime).toBe('5 min');
+    expect(result.data.message).toContain('shorter line');
+  });
+
+  test('should return null if there are no other alternative services active', async () => {
+    // 1. Mock the database so only the target service is active
+    getAllActiveQueues.mockResolvedValue([
+      { serviceId: 1, serviceName: 'General Checkup', position: 3, duration: 10 }
+    ]);
+
+    // 2. Run the function
+    const result = await getAlternativeServiceRecommendation(1);
+
+    // 3. Verify it gracefully returns null instead of crashing
+    expect(result).toBeNull();
+  });
+
+  test('should fail silently and return an error object if the database crashes', async () => {
+    // 1. Force the database mock to throw an error
+    getAllActiveQueues.mockRejectedValue(new Error('MySQL Connection Lost'));
+
+    // 2. Run the function
+    const result = await getAlternativeServiceRecommendation(1);
+
+    // 3. Verify it caught the error
+    expect(result.success).toBe(false);
+    expect(result.errors).toContain('Failed to fetch recommendation');
   });
   
 });
