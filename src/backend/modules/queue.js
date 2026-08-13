@@ -37,7 +37,7 @@ export async function joinQueue(data) {
     const position = currentWaiters + 1;
 
     // Insert the patient into the database
-    const entryId = await insertQueueEntry(queueId, data.userId, position);
+    const entryId = await insertQueueEntry(queueId, data.userId, position, data.userName || '');
 
     // Return the new database ID and their spot in line
     return { 

@@ -455,6 +455,66 @@ app.get('/reports/pdf', async (req, res) => {
 
 });
 
+// Reports - Stats & History (used by ReportPage UI)
+import pool from './src/backend/data/db.js';
+
+app.get('/reports/stats', async (req, res) => {
+  try {
+    const [served] = await pool.query(
+      `SELECT COUNT(*) as count FROM queue_entries WHERE status = 'served'`
+    );
+    const [totalEntries] = await pool.query(
+      `SELECT COUNT(*) as count FROM queue_entries`
+    );
+    const [byService] = await pool.query(`
+      SELECT s.id, s.name, s.duration, s.priority,
+        COUNT(qe.id) as totalEntries,
+        SUM(CASE WHEN qe.status = 'served' THEN 1 ELSE 0 END) as servedCount,
+        SUM(CASE WHEN qe.status = 'waiting' THEN 1 ELSE 0 END) as waitingCount
+      FROM services s
+      LEFT JOIN queues q ON q.service_id = s.id
+      LEFT JOIN queue_entries qe ON qe.queue_id = q.id
+      GROUP BY s.id
+      ORDER BY s.id ASC
+    `);
+    res.json({
+      success: true,
+      data: {
+        totalServed: served[0].count,
+        totalEntries: totalEntries[0].count,
+        byService,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
+});
+
+app.get('/reports/history', async (req, res) => {
+  try {
+    const serviceId = req.query.serviceId;
+    let query = `
+      SELECT qe.id, qe.user_id, COALESCE(NULLIF(qe.user_name, ''), qe.user_id) as userName,
+        qe.status, qe.position, qe.join_time,
+        s.name as serviceName, s.id as serviceId
+      FROM queue_entries qe
+      JOIN queues q ON qe.queue_id = q.id
+      JOIN services s ON q.service_id = s.id
+    `;
+    const params = [];
+    if (serviceId && serviceId !== 'all') {
+      query += ' WHERE s.id = ?';
+      params.push(Number(serviceId));
+    }
+    query += ' ORDER BY qe.join_time DESC';
+
+    const [rows] = await pool.query(query, params);
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
+});
+
 //Start server
 const PORT = 3001;
 

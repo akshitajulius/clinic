@@ -18,12 +18,20 @@ export async function initQueueTables() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       queue_id INT NOT NULL,
       user_id VARCHAR(255) NOT NULL, 
+      user_name VARCHAR(255) DEFAULT '',
       position INT NOT NULL,
       join_time DATETIME DEFAULT CURRENT_TIMESTAMP,
       status ENUM('waiting', 'served', 'canceled') DEFAULT 'waiting',
       FOREIGN KEY (queue_id) REFERENCES queues(id)
     )
   `);
+
+  // Add user_name column if it doesn't exist (for existing tables)
+  try {
+    await pool.query(`ALTER TABLE queue_entries ADD COLUMN user_name VARCHAR(255) DEFAULT '' AFTER user_id`);
+  } catch {
+    // Column already exists
+  }
 }
 
 // Gets an active queue for a specific service, or returns null if none exists
@@ -54,10 +62,10 @@ export async function getWaitingCount(queueId) {
 }
 
 // Inserts a new patient into the queue line
-export async function insertQueueEntry(queueId, userId, position) {
+export async function insertQueueEntry(queueId, userId, position, userName = '') {
   const [result] = await pool.query(
-    'INSERT INTO queue_entries (queue_id, user_id, position) VALUES (?, ?, ?)',
-    [queueId, userId, position]
+    'INSERT INTO queue_entries (queue_id, user_id, user_name, position) VALUES (?, ?, ?, ?)',
+    [queueId, userId, userName, position]
   );
   return result.insertId;
 }
@@ -85,7 +93,7 @@ export async function getUserQueueEntry(userId, serviceId) {
 // Gets all waiting patients for a specific service queue, ordered by their position in line
 export async function getWaitingQueueForService(serviceId) {
   const [rows] = await pool.query(`
-    SELECT qe.*, qe.user_id as userName, s.duration, s.name as serviceName
+    SELECT qe.*, COALESCE(NULLIF(qe.user_name, ''), qe.user_id) as userName, s.duration, s.name as serviceName
     FROM queue_entries qe
     JOIN queues q ON qe.queue_id = q.id
     JOIN services s ON q.service_id = s.id
@@ -98,7 +106,7 @@ export async function getWaitingQueueForService(serviceId) {
 // Gets all waiting patients across all open queues
 export async function getAllActiveQueues() {
   const [rows] = await pool.query(`
-    SELECT qe.*, qe.user_id as userName, s.id as serviceId, s.duration, s.name as serviceName
+    SELECT qe.*, COALESCE(NULLIF(qe.user_name, ''), qe.user_id) as userName, s.id as serviceId, s.duration, s.name as serviceName
     FROM queue_entries qe
     JOIN queues q ON qe.queue_id = q.id
     JOIN services s ON q.service_id = s.id
