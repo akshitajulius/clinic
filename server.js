@@ -526,6 +526,18 @@ app.get('/reports/history', async (req, res) => {
   }
 });
 
+app.delete('/reports/data', async (req, res) => {
+  try {
+    await pool.query('SET FOREIGN_KEY_CHECKS = 0');
+    await pool.query('TRUNCATE TABLE queue_entries');
+    await pool.query('TRUNCATE TABLE queues');
+    await pool.query('SET FOREIGN_KEY_CHECKS = 1');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, errors: [err.message] });
+  }
+});
+
 //Start server
 const PORT = 3001;
 

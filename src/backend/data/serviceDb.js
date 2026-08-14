@@ -50,6 +50,11 @@ export async function updateServiceById(id, fields) {
 export async function deleteServiceById(id) {
   const service = await selectServiceById(id);
   if (!service) return null;
+  await pool.query(
+    'DELETE qe FROM queue_entries qe JOIN queues q ON qe.queue_id = q.id WHERE q.service_id = ?',
+    [id]
+  );
+  await pool.query('DELETE FROM queues WHERE service_id = ?', [id]);
   await pool.query('DELETE FROM services WHERE id = ?', [id]);
   return service;
 }

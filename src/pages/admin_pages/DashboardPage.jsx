@@ -253,6 +253,7 @@ export default function DashboardPage() {
       <ReportPage
         services={services}
         onBack={() => setView('dashboard')}
+        refreshQueues={refreshQueues}
       />
     );
   }
@@ -388,8 +389,8 @@ export default function DashboardPage() {
       </div>
 
       {showForm && (
-        <div className={styles.overlay} onClick={handleCancel}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.overlay} onMouseDown={handleCancel}>
+          <div className={styles.modal} onMouseDown={e => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>{editingId ? 'Edit Service' : 'Add New Service'}</h2>
             <form onSubmit={handleSubmit}>
               <div className={styles.field}>
@@ -447,8 +448,8 @@ export default function DashboardPage() {
       )}
 
       {showFind && (
-        <div className={styles.overlay} onClick={closeFind}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.overlay} onMouseDown={closeFind}>
+          <div className={styles.modal} onMouseDown={e => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Find Service</h2>
             <div className={styles.field}>
               <label htmlFor="find-service">Service Name</label>
