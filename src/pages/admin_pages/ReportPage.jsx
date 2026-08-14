@@ -94,30 +94,49 @@ function downloadPDF(services, history, stats) {
   doc.save(`queuesmart_report_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-export default function ReportPage({ services, onBack }) {
+export default function ReportPage({ services, onBack, refreshQueues }) {
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [serviceFilter, setServiceFilter] = useState('all');
+  const [clearing, setClearing] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [statsRes, historyRes] = await Promise.all([
-          fetch(`${API}/reports/stats`).then(r => r.json()),
-          fetch(`${API}/reports/history`).then(r => r.json()),
-        ]);
+  const loadData = async () => {
+    try {
+      const [statsRes, historyRes] = await Promise.all([
+        fetch(`${API}/reports/stats`).then(r => r.json()),
+        fetch(`${API}/reports/history`).then(r => r.json()),
+      ]);
 
-        if (statsRes.success) setStats(statsRes.data);
-        if (historyRes.success) setHistory(historyRes.data || []);
-      } catch {
-        /* network error */
-      } finally {
-        setLoading(false);
+      if (statsRes.success) setStats(statsRes.data);
+      if (historyRes.success) setHistory(historyRes.data || []);
+    } catch {
+      /* network error */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, [services]);
+
+  const clearReportData = async () => {
+    if (!confirm('Are you sure you want to clear all report data? This cannot be undone.')) return;
+    setClearing(true);
+    try {
+      const res = await fetch(`${API}/reports/data`, { method: 'DELETE' });
+      const result = await res.json();
+      if (result.success) {
+        setStats(null);
+        setHistory([]);
+        await loadData();
+        if (refreshQueues) await refreshQueues();
       }
-    };
-    load();
-  }, [services]);
+    } catch {
+      /* network error */
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const filteredHistory = useMemo(() => {
     if (serviceFilter === 'all') return history;
@@ -152,6 +171,13 @@ export default function ReportPage({ services, onBack }) {
               onClick={() => downloadPDF(services, filteredHistory, stats)}
             >
               ↓ Download PDF
+            </button>
+            <button
+              className={styles.clearBtn}
+              onClick={clearReportData}
+              disabled={clearing}
+            >
+              {clearing ? 'Clearing…' : '✕ Clear Report Data'}
             </button>
           </div>
         </div>

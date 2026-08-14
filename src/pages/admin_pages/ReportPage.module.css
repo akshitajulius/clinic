@@ -69,6 +69,28 @@
   border-color: var(--blue-700);
 }
 
+.clearBtn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  white-space: nowrap;
+  background: white;
+  border: 1.5px solid #ef4444;
+  color: #ef4444;
+  transition: background 0.15s, color 0.15s;
+}
+
+.clearBtn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.clearBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
