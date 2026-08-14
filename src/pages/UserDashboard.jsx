@@ -19,11 +19,30 @@ export default function UserDashboard() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Fetch all available services
         const res = await fetch(`${API}/services`);
         const servicesResult = await res.json();
+        
         if (servicesResult.success) {
           setServices(servicesResult.data);
           syncServices(servicesResult.data);
+          
+          // Check if the user is currently in any of these service queues
+          for (const service of servicesResult.data) {
+            const positionRes = await fetch(`${API}/queue/${service.id}/position/${userId}`);
+            const positionData = await positionRes.json();
+            
+            // If the backend confirms they are in line, update the UI
+            if (positionData.success) {
+              setActiveQueue({
+                serviceName: service.name,
+                status: 'Waiting',
+                position: positionData.data.position,
+                estWait: positionData.data.estimatedWaitTime
+              });
+              break; // We found their queue, so we can stop searching
+            }
+          }
         }
       } catch {
         /* network error */

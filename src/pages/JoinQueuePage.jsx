@@ -65,10 +65,22 @@ export default function JoinQueuePage() {
   const handleLeave = async () => {
     if (ticketId) {
       try {
+        // Cancel the active ticket
         await fetch(`${API}/queue/leave`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ entryId: ticketId }),
+        });
+
+        // Log the cancellation in the user's history
+        await fetch(`${API}/history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: 'patient-123', 
+            serviceId: Number(selectedService), 
+            outcome: 'Left Queue' 
+          })
         });
       } catch { /* ignore */ }
     }
