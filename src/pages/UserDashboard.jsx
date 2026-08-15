@@ -65,13 +65,6 @@ export default function UserDashboard() {
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               className={styles.testBtn}
-              onClick={() => addNotification('Your turn for General Checkup is approaching!', 'update')}
-            >
-              + Test Notification
-            </button>
-
-            <button
-              className={styles.testBtn}
               onClick={() => navigate('/history')}
             >
               My History
