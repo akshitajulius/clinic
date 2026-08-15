@@ -286,12 +286,7 @@ export default function DashboardPage() {
             >
               + Simulate New Queue
             </button>
-            <button
-              className={styles.testBtn}
-              onClick={() => addNotification('Queue update: Patient #4 joined General Checkup.', 'update')}
-            >
-              + Simulate notification
-            </button>
+
           </div>
         </div>
 
