@@ -10,6 +10,7 @@ import {
   getWaitingQueueForService,
   getAllActiveQueues
 } from '../data/queueData.js';
+import { listServices } from './services.js';
 
 // --- Patient/User join and leave functions ---
 
@@ -197,41 +198,43 @@ export async function viewAllQueues() {
   }
 }
 
-// Smart Feature Attempt
+// FULLY PATCHED SMART FEATURE
 export async function getAlternativeServiceRecommendation(targetServiceId) {
   try {
-    // Fetch the entire clinic's current queue status
-    const allWaiting = await getAllActiveQueues();
-    
-    // Filter out the service the user is already looking at
-    const alternativeQueues = allWaiting.filter(entry => entry.serviceId !== Number(targetServiceId));
-    
-    if (alternativeQueues.length === 0) {
-      return null; // No other services are currently active
-    }
+    // 1. Fetch ALL available services to get base durations
+    const servicesRes = await listServices();
+    if (!servicesRes.success) return { success: true, data: null };
+    const allServices = servicesRes.data;
 
-    // Group by service to find the one with the shortest line
+    // 2. Map every service to its base wait time to perfectly match the UI
     const serviceWaitTimes = {};
-    for (const entry of alternativeQueues) {
-      if (!serviceWaitTimes[entry.serviceId]) {
-        serviceWaitTimes[entry.serviceId] = {
-          serviceId: entry.serviceId,
-          serviceName: entry.serviceName,
-          estimatedWait: 0
-        };
-      }
-      
-      // Calculate total wait time based on position and duration
-      const waitTime = entry.position * entry.duration;
-      if (waitTime > serviceWaitTimes[entry.serviceId].estimatedWait) {
-         serviceWaitTimes[entry.serviceId].estimatedWait = waitTime;
-      }
+    for (const service of allServices) {
+      // Extract the base duration directly to bypass ghost tickets (e.g., "20 min" becomes 20)
+      const baseDuration = parseInt(service.avgWait) || 0;
+
+      serviceWaitTimes[service.id] = {
+        serviceId: service.id,
+        serviceName: service.name,
+        estimatedWait: baseDuration
+      };
     }
 
-    // Find the service with the absolute lowest wait time
-    const alternatives = Object.values(serviceWaitTimes);
-    if (alternatives.length === 0) return null;
+    // 3. Identify the static wait time for the user's current selection
+    const targetData = serviceWaitTimes[Number(targetServiceId)];
+    if (!targetData) return { success: true, data: null };
+    const targetWaitTime = targetData.estimatedWait;
+
+    // 4. Find all alternative services that are strictly FASTER than the target
+    const alternatives = Object.values(serviceWaitTimes)
+      .filter(s => s.serviceId !== Number(targetServiceId))
+      .filter(s => s.estimatedWait < targetWaitTime); // Must be faster!
+
+    // If no other line is faster, do not show a recommendation
+    if (alternatives.length === 0) {
+      return { success: true, data: null };
+    }
     
+    // 5. Sort to find the absolute fastest alternative
     alternatives.sort((a, b) => a.estimatedWait - b.estimatedWait);
     const bestAlternative = alternatives[0];
 
