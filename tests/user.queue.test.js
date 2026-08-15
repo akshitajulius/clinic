@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-// Mock your new database helper
+// Mock your database helpers
 jest.mock('../src/backend/data/queueData.js', () => ({
   getOpenQueueByServiceId: jest.fn(),
   createQueue: jest.fn(),
@@ -9,6 +9,11 @@ jest.mock('../src/backend/data/queueData.js', () => ({
   updateQueueEntryStatus: jest.fn(),
   getUserQueueEntry: jest.fn(),
   getAllActiveQueues: jest.fn(),
+}));
+
+// Mock the services module used by the Smart Feature
+jest.mock('../src/backend/modules/services.js', () => ({
+  listServices: jest.fn()
 }));
 
 import {
@@ -21,6 +26,8 @@ import {
   getAllActiveQueues
 } from '../src/backend/data/queueData.js';
 
+import { listServices } from '../src/backend/modules/services.js';
+
 import { 
   joinQueue, 
   leaveQueue, 
@@ -28,7 +35,7 @@ import {
   getAlternativeServiceRecommendation
 } from '../src/backend/modules/queue.js';
 
-// Clear the database mocks before each test instead of clearing the old array
+// Clear the database mocks before each test
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -36,10 +43,9 @@ beforeEach(() => {
 describe('Queue Management - Patient Logic', () => {
   
   test('should successfully add a user to the queue', async () => {
-    // Tell the mock database exactly what to return when asked
     getOpenQueueByServiceId.mockResolvedValue({ id: 10 }); 
     getWaitingCount.mockResolvedValue(0); 
-    insertQueueEntry.mockResolvedValue(100); // Returns a mock ticket ID of 100
+    insertQueueEntry.mockResolvedValue(100); 
 
     const result = await joinQueue({ userId: 'patient-1', serviceId: 1 });
     
@@ -48,17 +54,16 @@ describe('Queue Management - Patient Logic', () => {
     expect(result.data.id).toBe(100);
     expect(result.data.position).toBe(1);
     
-    // Verify your backend actually sent the correct data to the database
-    expect(insertQueueEntry).toHaveBeenCalledWith(10, 'patient-1', 1);
+    // Expect the 4th argument (empty string for userName)
+    expect(insertQueueEntry).toHaveBeenCalledWith(10, 'patient-1', 1, '');
   });
 
   test('should fail validation if required fields are missing', async () => {
-    const result = await joinQueue({ serviceId: 1 }); // Missing userId
+    const result = await joinQueue({ serviceId: 1 }); 
     expect(result.success).toBe(false);
   });
 
   test('should return error if database fails during join', async () => {
-    // Simulate a database crash to test your new try/catch blocks
     getOpenQueueByServiceId.mockRejectedValue(new Error('DB Connection Failed'));
     
     const result = await joinQueue({ userId: 'patient-1', serviceId: 1 });
@@ -75,7 +80,6 @@ describe('Queue Management - Patient Logic', () => {
   });
 
   test('should accurately calculate estimated wait time based on queue position', async () => {
-    // Mock the database returning a user at position 2 for a 20-minute service
     getUserQueueEntry.mockResolvedValue({
       position: 2,
       duration: 20
@@ -88,7 +92,6 @@ describe('Queue Management - Patient Logic', () => {
   });
 
   test('should return error if user is not in the queue', async () => {
-    // Mock the database finding no record of the patient
     getUserQueueEntry.mockResolvedValue(null);
 
     const result = await getQueuePosition('patient-unknown', 1);
@@ -102,19 +105,18 @@ describe('Queue Management - Patient Logic', () => {
 describe('Smart Feature: getAlternativeServiceRecommendation', () => {
   
   test('should recommend the alternative service with the absolute shortest wait time', async () => {
-    // 1. Mock the database response to simulate 3 different active queues
-    const mockActiveQueues = [
-      { serviceId: 1, serviceName: 'General Checkup', position: 3, duration: 10 }, // Target: 30 min wait
-      { serviceId: 2, serviceName: 'Lab Test', position: 1, duration: 5 },         // Alternative 1: 5 min wait (Winner)
-      { serviceId: 3, serviceName: 'X-Ray', position: 5, duration: 15 }            // Alternative 2: 75 min wait
-    ];
-    
-    getAllActiveQueues.mockResolvedValue(mockActiveQueues);
+    // Mock the new listServices function to return dummy wait times
+    listServices.mockResolvedValue({
+      success: true,
+      data: [
+        { id: 1, name: 'General Checkup', avgWait: '30 min' }, // Target: 30 min
+        { id: 2, name: 'Lab Test', avgWait: '5 min' },         // Alternative 1: 5 min (Winner)
+        { id: 3, name: 'X-Ray', avgWait: '75 min' }            // Alternative 2: 75 min
+      ]
+    });
 
-    // 2. Run the function, pretending the user is looking at serviceId 1
     const result = await getAlternativeServiceRecommendation(1);
 
-    // 3. Verify it picked Service 2
     expect(result).not.toBeNull();
     expect(result.success).toBe(true);
     expect(result.data.serviceId).toBe(2);
@@ -123,26 +125,28 @@ describe('Smart Feature: getAlternativeServiceRecommendation', () => {
   });
 
   test('should return null if there are no other alternative services active', async () => {
-    // 1. Mock the database so only the target service is active
-    getAllActiveQueues.mockResolvedValue([
-      { serviceId: 1, serviceName: 'General Checkup', position: 3, duration: 10 }
-    ]);
+    // Mock the database so all alternatives are slower than the target
+    listServices.mockResolvedValue({
+      success: true,
+      data: [
+        { id: 1, name: 'General Checkup', avgWait: '10 min' },
+        { id: 2, name: 'X-Ray', avgWait: '40 min' } 
+      ]
+    });
 
-    // 2. Run the function
     const result = await getAlternativeServiceRecommendation(1);
 
-    // 3. Verify it gracefully returns null instead of crashing
-    expect(result).toBeNull();
+    // CHANGED: Expect the structured response instead of a raw null
+    expect(result.success).toBe(true);
+    expect(result.data).toBeNull();
   });
 
   test('should fail silently and return an error object if the database crashes', async () => {
-    // 1. Force the database mock to throw an error
-    getAllActiveQueues.mockRejectedValue(new Error('MySQL Connection Lost'));
+    // Force the listServices mock to throw an error
+    listServices.mockRejectedValue(new Error('MySQL Connection Lost'));
 
-    // 2. Run the function
     const result = await getAlternativeServiceRecommendation(1);
 
-    // 3. Verify it caught the error
     expect(result.success).toBe(false);
     expect(result.errors).toContain('Failed to fetch recommendation');
   });
